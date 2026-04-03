@@ -180,33 +180,33 @@ jobs:
           cd webrtc-src/src
           
           (
-            gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
+            gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_build_tests=false"
             ninja -C out/ios-device ios_framework_bundle -j8 --quiet
-            gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
+            gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_build_tests=false"
             ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
           ) &
           IOS_PID=$!
           
           (
-            gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
+            gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_build_tests=false"
             ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
-            gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
+            gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_build_tests=false"
             ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
           ) &
           TVOS_PID=$!
           
           (
-            gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
+            gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" rtc_build_tests=false"
             ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
-            gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
+            gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" rtc_build_tests=false"
             ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
           ) &
           MACOS_PID=$!
           
           (
-            gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
+            gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_build_tests=false"
             ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
-            gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
+            gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_build_tests=false"
             ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
           ) &
           CATALYST_PID=$!
