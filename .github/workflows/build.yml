@@ -431,9 +431,6 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
@@ -446,34 +443,36 @@ jobs:
         id: depot-cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.TEMP }}/depot_tools
+          path: ${{ env.TEMP }}\depot_tools
           key: depot-${{ hashFiles('.github/workflows/build.yml') }}-windows
       
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "${{ env.TEMP }}/depot_tools"
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP\depot_tools"
       
       - name: Add depot_tools to PATH
         run: |
-          echo "${{ env.TEMP }}/depot_tools" >> $GITHUB_PATH
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP\depot_tools"
       
       - name: Fetch WebRTC source
         run: |
-          mkdir "$GITHUB_WORKSPACE/webrtc-src"
-          cd "$GITHUB_WORKSPACE/webrtc-src"
-          export DEPOT_TOOLS_HTTP_TIMEOUT=600
-          export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3; do
-            fetch --nohooks webrtc 2>/dev/null && break
-            echo "Fetch failed, retry $i/3..."
-            sleep 30
-          done
-          for i in 1 2 3; do
-            gclient sync -D --force 2>/dev/null && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
-          done
+          New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
+          Set-Location webrtc-src
+          $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
+          $env:GIT_HTTP_TIMEOUT = "300"
+          for ($i=1; $i -le 3; $i++) {
+            fetch --nohooks webrtc 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "Fetch failed, retry $i/3..."
+            Start-Sleep -Seconds 30
+          }
+          for ($i=1; $i -le 3; $i++) {
+            gclient sync -D --force 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "Sync failed, retry $i/3..."
+            Start-Sleep -Seconds 30
+          }
 
       - name: Cache WebRTC source
         uses: actions/cache@v4
@@ -482,37 +481,40 @@ jobs:
           key: webrtc-${{ needs.check-version.outputs.new_version }}-windows
       
       - name: Build Windows x64 and x86 in parallel
-        working-directory: ${{ github.workspace }}/webrtc-src/src
         run: |
-          (
-            gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
+          Set-Location webrtc-src/src
+          
+          $job1 = Start-Job -ScriptBlock {
+            param($dir)
+            Set-Location $dir
+            gn gen out/Release --args="target_os=`"win`" target_cpu=`"x64`" is_debug=false"
             ninja -C out/Release webrtc -j8
-          ) &
-          X64_PID=$!
+          } -ArgumentList (Get-Location).Path
           
-          (
-            gn gen out/Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
+          $job2 = Start-Job -ScriptBlock {
+            param($dir)
+            Set-Location $dir
+            gn gen out/Release-x86 --args="target_os=`"win`" target_cpu=`"x86`" is_debug=false"
             ninja -C out/Release-x86 webrtc -j8
-          ) &
-          X86_PID=$!
+          } -ArgumentList (Get-Location).Path
           
-          wait $X64_PID
-          wait $X86_PID
+          Wait-Job $job1, $job2 | Out-Null
+          Receive-Job $job1, $job2
 
       - name: Create Windows artifact
-        working-directory: ${{ github.workspace }}/webrtc-src/src
         run: |
-          VERSION="${{ needs.check-version.outputs.new_version }}"
-          mkdir -p lib
-          cp out/Release/*.dll lib/ 2>/dev/null || true
-          cp out/Release-x86/*.dll lib/ 2>/dev/null || true
-          zip -r "libwebrtc-win-${VERSION}.zip" lib/
+          Set-Location webrtc-src/src
+          $VERSION = "${{ needs.check-version.outputs.new_version }}"
+          New-Item -ItemType Directory -Force -Path lib | Out-Null
+          Copy-Item out\Release\*.dll lib\ -ErrorAction SilentlyContinue
+          Copy-Item out\Release-x86\*.dll lib\ -ErrorAction SilentlyContinue
+          Compress-Archive -Path lib\* -DestinationPath "libwebrtc-win-${VERSION}.zip" -Force
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: libwebrtc-win-*.zip
+          path: webrtc-src/src/libwebrtc-win-*.zip
           compression-level: 0
 
   release:
