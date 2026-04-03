@@ -57,8 +57,18 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc_android
-          gclient sync -D --force
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc_android && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
+          for i in 1 2 3; do
+            gclient sync -D --force --jobs=1 && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
       
       - name: Build Android AAR
         run: |
@@ -81,7 +91,14 @@ jobs:
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p headers-output
-          cp -r /tmp/webrtc-build/headers/* headers-output/
+          cp -r webrtc-src/src/api/* headers-output/
+          cp -r webrtc-src/src/common_audio/* headers-output/
+          cp -r webrtc-src/src/common_video/* headers-output/
+          cp -r webrtc-src/src/modules/* headers-output/
+          cp -r webrtc-src/src/sdk/* headers-output/
+          cp -r webrtc-src/src/system/* headers-output/
+          cp -r webrtc-src/src/rtc_base/* headers-output/
+          cp -r webrtc-src/src/rtc_tools/* headers-output/
           cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/
           tar -cvJf libwebrtc-headers-${VERSION}.tar.xz -C headers-output include
 
@@ -118,7 +135,13 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc_ios
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
           gclient sync -D --force
       
       - name: Build iOS framework
@@ -169,7 +192,13 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc_ios
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
           gclient sync -D --force
       
       - name: Build tvOS framework
@@ -217,7 +246,13 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
           gclient sync -D --force
       
       - name: Build macOS framework
@@ -266,7 +301,13 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
           gclient sync -D --force
       
       - name: Build macOS Catalyst framework
@@ -315,7 +356,13 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
           gclient sync -D --force
       
       - name: Install sysroot
@@ -362,7 +409,13 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src && cd webrtc-src
-          fetch --nohooks webrtc
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
           gclient sync -D --force
       
       - name: Install ARM sysroot
@@ -412,8 +465,19 @@ jobs:
         run: |
           mkdir webrtc-src
           Set-Location webrtc-src
-          $env:DEPOT_TOOLS = "$env:TEMP\depot_tools"
-          fetch --nohooks webrtc
+          $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
+          $env:GIT_HTTP_TIMEOUT = "300"
+          $success = $false
+          for ($i=1; $i -le 3; $i++) {
+            fetch --nohooks webrtc 2>$null
+            if ($LASTEXITCODE -eq 0) {
+              $success = $true
+              break
+            }
+            Write-Host "Fetch failed, retry $i/3..."
+            Start-Sleep -Seconds 30
+          }
+          if (-not $success) { exit 1 }
           gclient sync -D --force
       
       - name: Build Windows x64
