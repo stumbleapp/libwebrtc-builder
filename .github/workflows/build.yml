@@ -173,10 +173,10 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\""
-          ninja -C out/ios-device ios_framework_bundle -j8 --quiet
-          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\""
-          ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
+          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
+          ninja -C out/ios-device ios_framework_bundle --quiet
+          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
+          ninja -C out/ios-simulator ios_framework_bundle --quiet
           cp -R out/ios-device/WebRTC.framework ios-device.framework
           cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework
           xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework
@@ -196,9 +196,9 @@ jobs:
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\""
+          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
           ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
-          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\""
+          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
           ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
           xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC.xcframework
 
@@ -239,9 +239,9 @@ jobs:
       - name: Build macOS Catalyst framework
         run: |
           cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\""
+          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
           ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
-          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\""
+          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
           ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
           lipo -create -output WebRTC.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
           cp -R out/catalyst-arm64/WebRTC.framework .
@@ -396,6 +396,9 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
@@ -445,15 +448,15 @@ jobs:
       
       - name: Build Windows x64
         run: |
-          Set-Location webrtc-src\src
-          gn gen out\Release --args='target_os="win" target_cpu="x64" is_debug=false'
-          ninja -C out\Release webrtc -j8
+          cd webrtc-src/src
+          gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
+          ninja -C out/Release webrtc
 
       - name: Build Windows x86
         run: |
-          Set-Location webrtc-src\src
-          gn gen out\Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
-          ninja -C out\Release-x86 webrtc -j8
+          cd webrtc-src/src
+          gn gen out/Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
+          ninja -C out/Release-x86 webrtc
 
       - name: Create Windows artifact
         run: |
