@@ -483,13 +483,13 @@ jobs:
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src\src
-          gn gen out\Release --args="target_os=`"win`" target_cpu=`"x64`" is_debug=false"
+          gn gen out\Release --args='target_os="win" target_cpu="x64" is_debug=false'
           ninja -C out\Release webrtc
 
       - name: Build Windows x86
         run: |
           Set-Location webrtc-src\src
-          gn gen out\Release-x86 --args="target_os=`"win`" target_cpu=`"x86`" is_debug=false"
+          gn gen out\Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
           ninja -C out\Release-x86 webrtc
 
       - name: Create Windows artifact
