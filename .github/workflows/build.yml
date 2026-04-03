@@ -64,7 +64,7 @@ jobs:
         run: |
           cd webrtc-src/src
           ./build/install-build-deps.sh
-          tools_webrtc/android/build_aar.py --output_dir /tmp/webrtc-build
+          tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
       
       - name: Prepare Android artifacts
         run: |
@@ -124,13 +124,24 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          tools_webrtc/ios/build_ios_framework.py --output_dir /tmp/webrtc-build
+          
+          COMMON_ARGS="enable_libaom=true enable_stripping=true ios_enable_code_signing=false is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          
+          gn gen out/ios-device --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\"" --ide=xcode
+          ninja -C out/ios-device ios_framework_bundle -j6 --quiet
+          
+          gn gen out/ios-simulator --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\"" --ide=xcode
+          ninja -C out/ios-simulator ios_framework_bundle -j6 --quiet
+          
+          cp -R out/ios-device/WebRTC.framework ios-device.framework
+          cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework
+          
+          xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework
 
       - name: Create iOS artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          cp /tmp/webrtc-build/*.xcframework . 2>/dev/null || true
-          zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework 2>/dev/null || true
+          zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
@@ -164,13 +175,21 @@ jobs:
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          tools_webrtc/ios/build_ios_framework.py --target_os=tvos --output_dir /tmp/webrtc-build
+          
+          COMMON_ARGS="enable_libaom=true enable_stripping=true ios_enable_code_signing=false is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          
+          gn gen out/tvos-device --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\"" --ide=xcode
+          ninja -C out/tvos-device ios_framework_bundle -j6 --quiet
+          
+          gn gen out/tvos-simulator --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\"" --ide=xcode
+          ninja -C out/tvos-simulator ios_framework_bundle -j6 --quiet
+          
+          xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC.xcframework
 
       - name: Create tvOS artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          cp /tmp/webrtc-build/*.xcframework . 2>/dev/null || true
-          zip -r libwebrtc-tvos-${VERSION}.zip WebRTC.xcframework 2>/dev/null || true
+          zip -r libwebrtc-tvos-${VERSION}.zip WebRTC.xcframework
 
       - name: Upload tvOS artifact
         uses: actions/upload-artifact@v4
@@ -204,13 +223,22 @@ jobs:
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
-          tools_webrtc/mac/build_mac_framework.py --output_dir /tmp/webrtc-build
+          
+          COMMON_ARGS="enable_libaom=true enable_stripping=true is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          
+          gn gen out/macos-arm64 --args="$COMMON_ARGS target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\"" --ide=xcode
+          ninja -C out/macos-arm64 mac_framework_bundle -j6 --quiet
+          
+          gn gen out/macos-x64 --args="$COMMON_ARGS target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\"" --ide=xcode
+          ninja -C out/macos-x64 mac_framework_bundle -j6 --quiet
+          
+          lipo -create -output WebRTC.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
+          cp -R out/macos-arm64/WebRTC.framework .
 
       - name: Create macOS artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          cp /tmp/webrtc-build/*.framework . 2>/dev/null || true
-          tar -cvJf libwebrtc-macos-${VERSION}.tar.xz WebRTC.framework 2>/dev/null || true
+          tar -cvJf libwebrtc-macos-${VERSION}.tar.xz WebRTC.framework
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -244,13 +272,22 @@ jobs:
       - name: Build macOS Catalyst framework
         run: |
           cd webrtc-src/src
-          tools_webrtc/mac/build_mac_framework.py --enable_catalyst=1 --output_dir /tmp/webrtc-build
+          
+          COMMON_ARGS="enable_libaom=true enable_stripping=true is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          
+          gn gen out/catalyst-arm64 --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\"" --ide=xcode
+          ninja -C out/catalyst-arm64 ios_framework_bundle -j6 --quiet
+          
+          gn gen out/catalyst-x64 --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\"" --ide=xcode
+          ninja -C out/catalyst-x64 ios_framework_bundle -j6 --quiet
+          
+          lipo -create -output WebRTC.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
+          cp -R out/catalyst-arm64/WebRTC.framework .
 
       - name: Create macOS Catalyst artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          cp /tmp/webrtc-build/*Catalyst*.framework . 2>/dev/null || true
-          tar -cvJf libwebrtc-macos-catalyst-${VERSION}.tar.xz WebRTC.framework 2>/dev/null || true
+          tar -cvJf libwebrtc-macos-catalyst-${VERSION}.tar.xz WebRTC.framework
 
       - name: Upload macOS Catalyst artifact
         uses: actions/upload-artifact@v4
