@@ -23,7 +23,9 @@ jobs:
       - name: Check for new WebRTC version
         id: check
         run: |
-          CURRENT=$(curl -s "https://chromiumdash.appspot.com/fetch_version?module=chromium" | jq -r '.chromium_version')
+          # Use Chrome for Testing API to get latest milestone version
+          CHROME_MILESTONE=$(curl -sL "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r '.milestones | to_entries | max_by(.key) | .key')
+          CURRENT="m$(curl -sL "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r ".milestones[\"$CHROME_MILESTONE\"].version" | cut -d. -f1)"
           LAST_BUILT=$(cat .last-built-version 2>/dev/null || echo "0")
           
           if [ "$CURRENT" != "$LAST_BUILT" ] || [ "${{ github.event.inputs.force_build }}" == "true" ]; then
