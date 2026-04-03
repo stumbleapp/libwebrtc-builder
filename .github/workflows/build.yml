@@ -1,0 +1,437 @@
+name: Build libWebRTC Bi-Weekly
+
+on:
+  schedule:
+    - cron: '0 0 * * 0/2'  # Every 2 weeks on Sunday at midnight UTC
+  workflow_dispatch:     # Manual trigger
+    inputs:
+      force_build:
+        description: 'Force rebuild even if no new version'
+        type: boolean
+        default: false
+
+env:
+  WEBRTC_BUILD_TIMEOUT: 120m
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.check.outputs.new_version }}
+      current_version: ${{ steps.check.outputs.current_version }}
+    steps:
+      - name: Check for new WebRTC version
+        id: check
+        run: |
+          CURRENT=$(curl -s "https://chromiumdash.appspot.com/fetch_version?module=chromium" | jq -r '.chromium_version')
+          LAST_BUILT=$(cat .last-built-version 2>/dev/null || echo "0")
+          
+          if [ "$CURRENT" != "$LAST_BUILT" ] || [ "${{ github.event.inputs.force_build }}" == "true" ]; then
+            echo "new_version=$CURRENT" >> $GITHUB_OUTPUT
+            echo "current_version=$LAST_BUILT" >> $GITHUB_OUTPUT
+            echo "NEW_VERSION=$CURRENT"
+          else
+            echo "new_version=" >> $GITHUB_OUTPUT
+            echo "current_version=$LAST_BUILT" >> $GITHUB_OUTPUT
+            echo "No new version found. Current: $CURRENT, Last built: $LAST_BUILT"
+          fi
+
+  # =============================================================================
+  # ANDROID BUILD
+  # =============================================================================
+  build-android:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc_android
+          gclient sync -D --force
+      
+      - name: Build Android AAR
+        run: |
+          cd webrtc-src/src
+          ./build/install-build-deps.sh
+          tools_webrtc/android/build_aar.py --output_dir /tmp/webrtc-build
+      
+      - name: Prepare Android artifacts
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-${VERSION}/lib
+          cp /tmp/webrtc-build/*.so output-${VERSION}/lib/ 2>/dev/null || true
+
+      - name: Create Android binary artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          tar -cvJf libwebrtc-android-${VERSION}.tar.xz -C output-${VERSION} lib
+
+      - name: Create headers artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p headers-output
+          cp -r /tmp/webrtc-build/headers/* headers-output/
+          cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/
+          tar -cvJf libwebrtc-headers-${VERSION}.tar.xz -C headers-output include
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-binary
+          path: libwebrtc-android-*.tar.xz
+          compression-level: 0
+
+      - name: Upload headers artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: headers
+          path: libwebrtc-headers-*.tar.xz
+          compression-level: 0
+
+  # =============================================================================
+  # IOS BUILD
+  # =============================================================================
+  build-ios:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc_ios
+          gclient sync -D --force
+      
+      - name: Build iOS framework
+        run: |
+          cd webrtc-src/src
+          tools_webrtc/ios/build_ios_framework.py --output_dir /tmp/webrtc-build
+
+      - name: Create iOS artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          cp /tmp/webrtc-build/*.xcframework . 2>/dev/null || true
+          zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework 2>/dev/null || true
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: libwebrtc-ios-*.zip
+          compression-level: 0
+
+  # =============================================================================
+  # TVOS BUILD
+  # =============================================================================
+  build-tvos:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc_ios
+          gclient sync -D --force
+      
+      - name: Build tvOS framework
+        run: |
+          cd webrtc-src/src
+          tools_webrtc/ios/build_ios_framework.py --target_os=tvos --output_dir /tmp/webrtc-build
+
+      - name: Create tvOS artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          cp /tmp/webrtc-build/*.xcframework . 2>/dev/null || true
+          zip -r libwebrtc-tvos-${VERSION}.zip WebRTC.xcframework 2>/dev/null || true
+
+      - name: Upload tvOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvos
+          path: libwebrtc-tvos-*.zip
+          compression-level: 0
+
+  # =============================================================================
+  # MACOS BUILD
+  # =============================================================================
+  build-macos:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc
+          gclient sync -D --force
+      
+      - name: Build macOS framework
+        run: |
+          cd webrtc-src/src
+          tools_webrtc/mac/build_mac_framework.py --output_dir /tmp/webrtc-build
+
+      - name: Create macOS artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          cp /tmp/webrtc-build/*.framework . 2>/dev/null || true
+          tar -cvJf libwebrtc-macos-${VERSION}.tar.xz WebRTC.framework 2>/dev/null || true
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: libwebrtc-macos-*.tar.xz
+          compression-level: 0
+
+  # =============================================================================
+  # MACOS CATALYST BUILD
+  # =============================================================================
+  build-macos-catalyst:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc
+          gclient sync -D --force
+      
+      - name: Build macOS Catalyst framework
+        run: |
+          cd webrtc-src/src
+          tools_webrtc/mac/build_mac_framework.py --enable_catalyst=1 --output_dir /tmp/webrtc-build
+
+      - name: Create macOS Catalyst artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          cp /tmp/webrtc-build/*Catalyst*.framework . 2>/dev/null || true
+          tar -cvJf libwebrtc-macos-catalyst-${VERSION}.tar.xz WebRTC.framework 2>/dev/null || true
+
+      - name: Upload macOS Catalyst artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-catalyst
+          path: libwebrtc-macos-catalyst-*.tar.xz
+          compression-level: 0
+
+  # =============================================================================
+  # LINUX BUILD
+  # =============================================================================
+  build-linux:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc
+          gclient sync -D --force
+      
+      - name: Build Linux
+        run: |
+          cd webrtc-src/src
+          gn gen out/Release --args='target_os="linux" target_cpu="x64" is_debug=false'
+          ninja -C out/Release webrtc
+
+      - name: Create Linux artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p lib
+          cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
+          tar -cvJf libwebrtc-linux-${VERSION}.tar.xz lib
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: libwebrtc-linux-*.tar.xz
+          compression-level: 0
+
+  # =============================================================================
+  # LINUX ARM BUILD
+  # =============================================================================
+  build-linux-arm:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+          echo "/tmp/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src && cd webrtc-src
+          fetch --nohooks webrtc
+          gclient sync -D --force
+      
+      - name: Build Linux ARM
+        run: |
+          cd webrtc-src/src
+          gn gen out/Release --args='target_os="linux" target_cpu="arm" is_debug=false'
+          ninja -C out/Release webrtc
+
+      - name: Create Linux ARM artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p lib
+          cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
+          tar -cvJf libwebrtc-linux-arm-${VERSION}.tar.xz lib
+
+      - name: Upload Linux ARM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm
+          path: libwebrtc-linux-arm-*.tar.xz
+          compression-level: 0
+
+  # =============================================================================
+  # WINDOWS BUILD
+  # =============================================================================
+  build-windows:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install depot_tools
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git $env:TEMP\depot_tools
+          echo "$env:TEMP\depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir webrtc-src
+          Set-Location webrtc-src
+          $env:DEPOT_TOOLS = "$env:TEMP\depot_tools"
+          fetch --nohooks webrtc
+          gclient sync -D --force
+      
+      - name: Build Windows x64
+        run: |
+          Set-Location webrtc-src\src
+          gn gen out\Release --args="target_os='win' target_cpu='x64' is_debug=false"
+          ninja -C out\Release webrtc
+
+      - name: Build Windows x86
+        run: |
+          Set-Location webrtc-src\src
+          gn gen out\Release-x86 --args="target_os='win' target_cpu='x86' is_debug=false"
+          ninja -C out\Release-x86 webrtc
+
+      - name: Create Windows artifact
+        run: |
+          VERSION="${{ needs.check-version.outputs.new_version }}"
+          mkdir lib
+          Copy-Item webrtc-src\src\out\Release\*.dll lib\ 2>$null
+          Copy-Item webrtc-src\src\out\Release-x86\*.dll lib\ 2>$null
+          Compress-Archive -Path lib\* -DestinationPath "libwebrtc-win-${VERSION}.7z" -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: libwebrtc-win-*.7z
+          compression-level: 0
+
+  # =============================================================================
+  # RELEASE
+  # =============================================================================
+  release:
+    needs: [check-version, build-android, build-ios, build-tvos, build-macos, build-macos-catalyst, build-linux, build-linux-arm, build-windows]
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: libwebrtc-*
+          merge-multiple: false
+
+      - name: List downloaded artifacts
+        run: |
+          find artifacts/ -type f -name "libwebrtc-*" | sort
+
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-version.outputs.new_version }}
+          name: WebRTC ${{ needs.check-version.outputs.new_version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.tar.xz
+            artifacts/**/*.zip
+            artifacts/**/*.7z
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update last built version
+        run: |
+          echo ${{ needs.check-version.outputs.new_version }} > .last-built-version
+
+      - name: Commit version update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update last built version to ${{ needs.check-version.outputs.new_version }}"
+          file_pattern: ".last-built-version"
