@@ -460,8 +460,8 @@ jobs:
       
       - name: Fetch WebRTC source
         run: |
-          mkdir webrtc-src
-          cd webrtc-src
+          mkdir "$GITHUB_WORKSPACE/webrtc-src"
+          cd "$GITHUB_WORKSPACE/webrtc-src"
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3; do
@@ -483,7 +483,7 @@ jobs:
       
       - name: Build Windows x64 and x86 in parallel
         run: |
-          cd webrtc-src/src
+          cd "$GITHUB_WORKSPACE/webrtc-src/src"
           
           (
             gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
@@ -504,8 +504,8 @@ jobs:
         run: |
           VERSION="${{ needs.check-version.outputs.new_version }}"
           mkdir lib
-          cp webrtc-src/src/out/Release/*.dll lib/ 2>/dev/null || true
-          cp webrtc-src/src/out/Release-x86/*.dll lib/ 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE/webrtc-src/src/out/Release/"*.dll lib/ 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE/webrtc-src/src/out/Release-x86/"*.dll lib/ 2>/dev/null || true
           zip -r "libwebrtc-win-${VERSION}.zip" lib/
 
       - name: Upload Windows artifact
