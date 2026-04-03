@@ -125,12 +125,12 @@ jobs:
         run: |
           cd webrtc-src/src
           
-          COMMON_ARGS="enable_libaom=true enable_stripping=true ios_enable_code_signing=false is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          COMMON_ARGS="enable_libaom=true enable_stripping=true ios_enable_code_signing=false is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true enable_dsyms=false use_custom_libcxx=false"
           
-          gn gen out/ios-device --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\"" --ide=xcode
+          gn gen out/ios-device --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\""
           ninja -C out/ios-device ios_framework_bundle -j6 --quiet
           
-          gn gen out/ios-simulator --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\"" --ide=xcode
+          gn gen out/ios-simulator --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\""
           ninja -C out/ios-simulator ios_framework_bundle -j6 --quiet
           
           cp -R out/ios-device/WebRTC.framework ios-device.framework
@@ -176,12 +176,12 @@ jobs:
         run: |
           cd webrtc-src/src
           
-          COMMON_ARGS="enable_libaom=true enable_stripping=true ios_enable_code_signing=false is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          COMMON_ARGS="enable_libaom=true enable_stripping=true ios_enable_code_signing=false is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true enable_dsyms=false use_custom_libcxx=false"
           
-          gn gen out/tvos-device --args="$COMMON_ARGS target_os=\"tvos\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\"" --ide=xcode
+          gn gen out/tvos-device --args="$COMMON_ARGS target_os=\"tvos\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\""
           ninja -C out/tvos-device ios_framework_bundle -j6 --quiet
           
-          gn gen out/tvos-simulator --args="$COMMON_ARGS target_os=\"tvos\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\"" --ide=xcode
+          gn gen out/tvos-simulator --args="$COMMON_ARGS target_os=\"tvos\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\""
           ninja -C out/tvos-simulator ios_framework_bundle -j6 --quiet
           
           xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC.xcframework
@@ -224,12 +224,12 @@ jobs:
         run: |
           cd webrtc-src/src
           
-          COMMON_ARGS="enable_libaom=true enable_stripping=true is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          COMMON_ARGS="enable_libaom=true enable_stripping=true is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true enable_dsyms=false use_custom_libcxx=false"
           
-          gn gen out/macos-arm64 --args="$COMMON_ARGS target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\"" --ide=xcode
+          gn gen out/macos-arm64 --args="$COMMON_ARGS target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
           ninja -C out/macos-arm64 mac_framework_bundle -j6 --quiet
           
-          gn gen out/macos-x64 --args="$COMMON_ARGS target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\"" --ide=xcode
+          gn gen out/macos-x64 --args="$COMMON_ARGS target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
           ninja -C out/macos-x64 mac_framework_bundle -j6 --quiet
           
           lipo -create -output WebRTC.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
@@ -273,12 +273,12 @@ jobs:
         run: |
           cd webrtc-src/src
           
-          COMMON_ARGS="enable_libaom=true enable_stripping=true is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true"
+          COMMON_ARGS="enable_libaom=true enable_stripping=true is_component_build=false is_debug=false rtc_build_examples=false rtc_enable_protobuf=false rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true treat_warnings_as_errors=true use_rtti=true enable_dsyms=false use_custom_libcxx=false"
           
-          gn gen out/catalyst-arm64 --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\"" --ide=xcode
+          gn gen out/catalyst-arm64 --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\""
           ninja -C out/catalyst-arm64 ios_framework_bundle -j6 --quiet
           
-          gn gen out/catalyst-x64 --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\"" --ide=xcode
+          gn gen out/catalyst-x64 --args="$COMMON_ARGS target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\""
           ninja -C out/catalyst-x64 ios_framework_bundle -j6 --quiet
           
           lipo -create -output WebRTC.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
@@ -326,7 +326,7 @@ jobs:
       - name: Build Linux
         run: |
           cd webrtc-src/src
-          gn gen out/Release --args='target_os="linux" target_cpu="x64" is_debug=false'
+          gn gen out/Release --args='target_os="linux" target_cpu="x64" is_debug=false' --quiet
           ninja -C out/Release webrtc
 
       - name: Create Linux artifact
@@ -373,7 +373,7 @@ jobs:
       - name: Build Linux ARM
         run: |
           cd webrtc-src/src
-          gn gen out/Release --args='target_os="linux" target_cpu="arm" is_debug=false'
+          gn gen out/Release --args='target_os="linux" target_cpu="arm" is_debug=false' --quiet
           ninja -C out/Release webrtc
 
       - name: Create Linux ARM artifact
@@ -419,13 +419,13 @@ jobs:
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src\src
-          gn gen out\Release --args="target_os='win' target_cpu='x64' is_debug=false"
+          gn gen out\Release --args="target_os=`"win`" target_cpu=`"x64`" is_debug=false"
           ninja -C out\Release webrtc
 
       - name: Build Windows x86
         run: |
           Set-Location webrtc-src\src
-          gn gen out\Release-x86 --args="target_os='win' target_cpu='x86' is_debug=false"
+          gn gen out\Release-x86 --args="target_os=`"win`" target_cpu=`"x86`" is_debug=false"
           ninja -C out\Release-x86 webrtc
 
       - name: Create Windows artifact
