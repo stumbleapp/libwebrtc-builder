@@ -482,9 +482,8 @@ jobs:
           key: webrtc-${{ needs.check-version.outputs.new_version }}-windows
       
       - name: Build Windows x64 and x86 in parallel
+        working-directory: ${{ github.workspace }}/webrtc-src/src
         run: |
-          cd "$GITHUB_WORKSPACE/webrtc-src/src"
-          
           (
             gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
             ninja -C out/Release webrtc -j8
@@ -501,11 +500,12 @@ jobs:
           wait $X86_PID
 
       - name: Create Windows artifact
+        working-directory: ${{ github.workspace }}/webrtc-src/src
         run: |
           VERSION="${{ needs.check-version.outputs.new_version }}"
-          mkdir lib
-          cp "$GITHUB_WORKSPACE/webrtc-src/src/out/Release/"*.dll lib/ 2>/dev/null || true
-          cp "$GITHUB_WORKSPACE/webrtc-src/src/out/Release-x86/"*.dll lib/ 2>/dev/null || true
+          mkdir -p lib
+          cp out/Release/*.dll lib/ 2>/dev/null || true
+          cp out/Release-x86/*.dll lib/ 2>/dev/null || true
           zip -r "libwebrtc-win-${VERSION}.zip" lib/
 
       - name: Upload Windows artifact
