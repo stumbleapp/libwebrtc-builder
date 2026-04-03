@@ -318,6 +318,11 @@ jobs:
           fetch --nohooks webrtc
           gclient sync -D --force
       
+      - name: Install sysroot
+        run: |
+          cd webrtc-src/src
+          build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
+      
       - name: Build Linux
         run: |
           cd webrtc-src/src
@@ -360,6 +365,11 @@ jobs:
           fetch --nohooks webrtc
           gclient sync -D --force
       
+      - name: Install ARM sysroot
+        run: |
+          cd webrtc-src/src
+          build/linux/sysroot_scripts/install-sysroot.py --arch=arm
+      
       - name: Build Linux ARM
         run: |
           cd webrtc-src/src
@@ -387,6 +397,8 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
+    env:
+      DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
       - name: Checkout
         uses: actions/checkout@v4

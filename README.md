@@ -1,8 +1,10 @@
 # libWebRTC Builder
 
-<img src="https://img.shields.io/github/actions/workflow/status/stumbleapp/libwebrtc-builder/build.yml?branch=main&style=flat&label=Build" alt="Build">
-<img src="https://img.shields.io/github/v/release/stumbleapp/libwebrtc-builder?include_prereleases&style=flat&label=Release" alt="Release">
-<img src="https://img.shields.io/badge/License-Apache%202.0-000000?style=flat&alt=License">
+<p>
+  <img src="https://img.shields.io/github/actions/workflow/status/stumbleapp/libwebrtc-builder/build.yml?branch=main&style=flat&label=Build" alt="Build">
+  <img src="https://img.shields.io/github/v/release/stumbleapp/libwebrtc-builder?include_prereleases&style=flat&label=Release" alt="Release">
+  <img src="https://img.shields.io/badge/License-Apache%202.0-000000?style=flat&alt=License">
+</p>
 
 > Automated Bi-weekly WebRTC builds for all major platforms.
 
