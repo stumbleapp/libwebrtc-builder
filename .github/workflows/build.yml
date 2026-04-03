@@ -431,6 +431,9 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
