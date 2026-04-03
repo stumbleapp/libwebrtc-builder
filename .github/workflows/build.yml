@@ -10,9 +10,6 @@ on:
         type: boolean
         default: false
 
-env:
-  WEBRTC_BUILD_TIMEOUT: 120m
-
 jobs:
   check-version:
     runs-on: ubuntu-latest
@@ -44,6 +41,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       
       - name: Cache depot_tools
         id: depot-cache
@@ -72,7 +71,7 @@ jobs:
             sleep 30
           done
           for i in 1 2 3; do
-            gclient sync -D --force --jobs=1 && break
+            gclient sync -D --force && break
             echo "Sync failed, retry $i/3..."
             sleep 30
           done
@@ -135,6 +134,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       
       - name: Cache depot_tools
         id: depot-cache
@@ -162,7 +163,11 @@ jobs:
             echo "Fetch failed, retry $i/3..."
             sleep 30
           done
-          gclient sync -D --force
+          for i in 1 2 3; do
+            gclient sync -D --force && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
 
       - name: Cache WebRTC source
         uses: actions/cache@v4
@@ -170,19 +175,63 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}-apple
 
-      - name: Build iOS framework
+      - name: Build iOS, tvOS, macOS, Catalyst frameworks in parallel
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
-          ninja -C out/ios-device ios_framework_bundle --quiet
-          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
-          ninja -C out/ios-simulator ios_framework_bundle --quiet
+          
+          (
+            gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
+            ninja -C out/ios-device ios_framework_bundle -j8 --quiet
+            gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
+            ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
+          ) &
+          IOS_PID=$!
+          
+          (
+            gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
+            ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
+            gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
+            ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
+          ) &
+          TVOS_PID=$!
+          
+          (
+            gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
+            ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
+            gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
+            ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
+          ) &
+          MACOS_PID=$!
+          
+          (
+            gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
+            ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
+            gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
+            ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
+          ) &
+          CATALYST_PID=$!
+          
+          wait $IOS_PID
+          wait $TVOS_PID
+          wait $MACOS_PID
+          wait $CATALYST_PID
+
+      - name: Create Apple artifacts
+        run: |
+          cd webrtc-src/src
+          
           cp -R out/ios-device/WebRTC.framework ios-device.framework
           cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework
           xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework
-
-      - name: Create iOS artifact
-        run: |
+          
+          xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC-tvOS.xcframework
+          
+          lipo -create -output WebRTC-mac.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
+          cp -R out/macos-arm64/WebRTC.framework WebRTC-mac.framework
+          
+          lipo -create -output WebRTC-catalyst.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
+          cp -R out/catalyst-arm64/WebRTC.framework WebRTC-catalyst.framework
+          
           VERSION=${{ needs.check-version.outputs.new_version }}
           zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
 
@@ -193,19 +242,11 @@ jobs:
           path: libwebrtc-ios-*.zip
           compression-level: 0
 
-      - name: Build tvOS framework
-        run: |
-          cd webrtc-src/src
-          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
-          ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
-          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
-          ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
-          xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC.xcframework
-
       - name: Create tvOS artifact
         run: |
+          cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-tvos-${VERSION}.zip WebRTC.xcframework
+          zip -r libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework
 
       - name: Upload tvOS artifact
         uses: actions/upload-artifact@v4
@@ -214,20 +255,11 @@ jobs:
           path: libwebrtc-tvos-*.zip
           compression-level: 0
 
-      - name: Build macOS framework
-        run: |
-          cd webrtc-src/src
-          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
-          ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
-          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
-          ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
-          lipo -create -output WebRTC.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
-          cp -R out/macos-arm64/WebRTC.framework .
-
       - name: Create macOS artifact
         run: |
+          cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-macos-${VERSION}.zip WebRTC.framework
+          zip -r libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -236,20 +268,11 @@ jobs:
           path: libwebrtc-macos-*.zip
           compression-level: 0
 
-      - name: Build macOS Catalyst framework
-        run: |
-          cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
-          ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
-          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
-          ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
-          lipo -create -output WebRTC.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
-          cp -R out/catalyst-arm64/WebRTC.framework .
-
       - name: Create macOS Catalyst artifact
         run: |
+          cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-macos-catalyst-${VERSION}.zip WebRTC.framework
+          zip -r libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework
 
       - name: Upload macOS Catalyst artifact
         uses: actions/upload-artifact@v4
@@ -265,6 +288,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       
       - name: Cache depot_tools
         id: depot-cache
@@ -292,14 +317,18 @@ jobs:
             echo "Fetch failed, retry $i/3..."
             sleep 30
           done
-          gclient sync -D --force
-      
+          for i in 1 2 3; do
+            gclient sync -D --force && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
       - name: Cache WebRTC source
         uses: actions/cache@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}-linux
-      
+       
       - name: Install sysroot
         run: |
           cd webrtc-src/src
@@ -332,13 +361,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-linux
+          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-linux-arm
       
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -359,14 +390,18 @@ jobs:
             echo "Fetch failed, retry $i/3..."
             sleep 30
           done
-          gclient sync -D --force
-      
+          for i in 1 2 3; do
+            gclient sync -D --force && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
       - name: Cache WebRTC source
         uses: actions/cache@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}-linux-arm
-      
+
       - name: Install ARM sysroot
         run: |
           cd webrtc-src/src
@@ -396,81 +431,85 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
-          path: $env:TEMP\depot_tools
+          path: ${{ env.TEMP }}/depot_tools
           key: depot-${{ hashFiles('.github/workflows/build.yml') }}-windows
       
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git $env:TEMP\depot_tools
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "${{ env.TEMP }}/depot_tools"
       
       - name: Add depot_tools to PATH
         run: |
-          echo "$env:TEMP\depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          echo "${{ env.TEMP }}/depot_tools" >> $GITHUB_PATH
       
       - name: Fetch WebRTC source
         run: |
           mkdir webrtc-src
-          Set-Location webrtc-src
-          $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
-          $env:GIT_HTTP_TIMEOUT = "300"
-          $success = $false
-          for ($i=1; $i -le 3; $i++) {
-            fetch --nohooks webrtc 2>$null
-            if ($LASTEXITCODE -eq 0) {
-              $success = $true
-              break
-            }
-            Write-Host "Fetch failed, retry $i/3..."
-            Start-Sleep -Seconds 30
-          }
-          if (-not $success) { exit 1 }
-          gclient sync -D --force
-      
+          cd webrtc-src
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          for i in 1 2 3; do
+            fetch --nohooks webrtc 2>/dev/null && break
+            echo "Fetch failed, retry $i/3..."
+            sleep 30
+          done
+          for i in 1 2 3; do
+            gclient sync -D --force 2>/dev/null && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
       - name: Cache WebRTC source
         uses: actions/cache@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}-windows
       
-      - name: Build Windows x64
+      - name: Build Windows x64 and x86 in parallel
         run: |
           cd webrtc-src/src
-          gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
-          ninja -C out/Release webrtc
-
-      - name: Build Windows x86
-        run: |
-          cd webrtc-src/src
-          gn gen out/Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
-          ninja -C out/Release-x86 webrtc
+          
+          (
+            gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
+            ninja -C out/Release webrtc -j8
+          ) &
+          X64_PID=$!
+          
+          (
+            gn gen out/Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
+            ninja -C out/Release-x86 webrtc -j8
+          ) &
+          X86_PID=$!
+          
+          wait $X64_PID
+          wait $X86_PID
 
       - name: Create Windows artifact
         run: |
           VERSION="${{ needs.check-version.outputs.new_version }}"
           mkdir lib
-          Copy-Item webrtc-src\src\out\Release\*.dll lib\ 2>$null
-          Copy-Item webrtc-src\src\out\Release-x86\*.dll lib\ 2>$null
-          Compress-Archive -Path lib\* -DestinationPath "libwebrtc-win-${VERSION}.7z" -Force
+          cp webrtc-src/src/out/Release/*.dll lib/ 2>/dev/null || true
+          cp webrtc-src/src/out/Release-x86/*.dll lib/ 2>/dev/null || true
+          zip -r "libwebrtc-win-${VERSION}.zip" lib/
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: libwebrtc-win-*.7z
+          path: libwebrtc-win-*.zip
           compression-level: 0
 
   release:
@@ -499,7 +538,6 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/**/*.zip
-            artifacts/**/*.7z
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
