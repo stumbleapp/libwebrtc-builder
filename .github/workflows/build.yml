@@ -87,7 +87,7 @@ jobs:
         run: |
           cd webrtc-src/src
           ./build/install-build-deps.sh
-          tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
+          tools_webrtc/android/build_aar.py --output /tmp/webrtc-build --extra-ninja-switches="-j8"
       
       - name: Prepare Android artifacts
         run: |
@@ -98,35 +98,34 @@ jobs:
       - name: Create Android binary artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          tar -cvzf libwebrtc-android-${VERSION}.tar.gz -C output-${VERSION} lib
+          zip -r libwebrtc-android-${VERSION}.zip -r output-${VERSION}/lib
 
       - name: Create headers artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p headers-output
-          cp -r webrtc-src/src/api/* headers-output/
-          cp -r webrtc-src/src/common_audio/* headers-output/
-          cp -r webrtc-src/src/common_video/* headers-output/
-          cp -r webrtc-src/src/modules/* headers-output/
-          cp -r webrtc-src/src/sdk/* headers-output/
-          cp -r webrtc-src/src/system/* headers-output/
-          cp -r webrtc-src/src/rtc_base/* headers-output/
-          cp -r webrtc-src/src/rtc_tools/* headers-output/
-          cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/
-          tar -cvzf libwebrtc-headers-${VERSION}.tar.gz -C headers-output include
+          cp -r webrtc-src/src/api/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/common_audio/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/common_video/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/modules/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/sdk/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/rtc_base/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/rtc_tools/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/ 2>/dev/null || true
+          zip -r libwebrtc-headers-${VERSION}.zip headers-output
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-binary
-          path: libwebrtc-android-*.tar.xz
+          path: libwebrtc-android-*.zip
           compression-level: 0
 
       - name: Upload headers artifact
         uses: actions/upload-artifact@v4
         with:
           name: headers
-          path: libwebrtc-headers-*.tar.xz
+          path: libwebrtc-headers-*.zip
           compression-level: 0
 
   build-apple:
@@ -231,13 +230,13 @@ jobs:
       - name: Create macOS artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          tar -cvzf libwebrtc-macos-${VERSION}.tar.gz WebRTC.framework
+          zip -r libwebrtc-macos-${VERSION}.zip WebRTC.framework
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: libwebrtc-macos-*.tar.xz
+          path: libwebrtc-macos-*.zip
           compression-level: 0
 
       - name: Build macOS Catalyst framework
@@ -254,13 +253,13 @@ jobs:
       - name: Create macOS Catalyst artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          tar -cvzf libwebrtc-macos-catalyst-${VERSION}.tar.gz WebRTC.framework
+          zip -r libwebrtc-macos-catalyst-${VERSION}.zip WebRTC.framework
 
       - name: Upload macOS Catalyst artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-catalyst
-          path: libwebrtc-macos-catalyst-*.tar.xz
+          path: libwebrtc-macos-catalyst-*.zip
           compression-level: 0
 
   build-linux:
@@ -321,13 +320,13 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p lib
           cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
-          tar -cvzf libwebrtc-linux-${VERSION}.tar.gz lib
+          zip -r libwebrtc-linux-${VERSION}.zip lib
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: libwebrtc-linux-*.tar.xz
+          path: libwebrtc-linux-*.zip
           compression-level: 0
 
   build-linux-arm:
@@ -388,13 +387,13 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p lib
           cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
-          tar -cvzf libwebrtc-linux-arm-${VERSION}.tar.gz lib
+          zip -r libwebrtc-linux-arm-${VERSION}.zip lib
 
       - name: Upload Linux ARM artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-arm
-          path: libwebrtc-linux-arm-*.tar.xz
+          path: libwebrtc-linux-arm-*.zip
           compression-level: 0
 
   build-windows:
@@ -500,7 +499,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            artifacts/**/*.tar.gz
             artifacts/**/*.zip
             artifacts/**/*.7z
         env:
