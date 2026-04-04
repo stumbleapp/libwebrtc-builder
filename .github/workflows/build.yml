@@ -101,14 +101,14 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: webrtc-src
-          key: ${{ steps.source-cache.outputs.cache-primary-key }}
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
 
       - name: Save depot_tools cache
         if: steps.depot-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: /tmp/depot_tools
-          key: ${{ steps.depot-cache.outputs.cache-primary-key }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
 
   build-android:
     needs: [check-version, fetch-source]
@@ -145,6 +145,7 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
+        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -238,6 +239,7 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
+        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -353,6 +355,7 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
+        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -421,6 +424,7 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
+        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
