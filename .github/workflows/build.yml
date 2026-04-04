@@ -98,25 +98,12 @@ jobs:
 
       - name: Save WebRTC source cache
         if: steps.source-cache.outputs.cache-hit != 'true'
-        run: |
-          echo "Cache miss - saving webrtc source..."
-          ls -la webrtc-src/
-          echo "Key: webrtc-${{ needs.check-version.outputs.new_version }}"
-
-      - name: Save WebRTC source cache action
-        if: steps.source-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
 
       - name: Save depot_tools cache
-        if: steps.depot-cache.outputs.cache-hit != 'true'
-        run: |
-          echo "Cache miss - saving depot_tools..."
-          echo "Key: depot-tools-${{ needs.check-version.outputs.new_version }}"
-
-      - name: Save depot_tools cache action
         if: steps.depot-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
@@ -172,7 +159,11 @@ jobs:
           chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
           cd ..
-          gclient sync -D
+          for i in 1 2 3; do
+            gclient sync -D --with_branch_heads && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
           cd src
           gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
           ninja -C out/Release webrtc -j8
