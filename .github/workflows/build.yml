@@ -178,33 +178,33 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/ios-device ios_framework_bundle -j8 --quiet
-          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
 
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
-          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
 
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true"
+          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
-          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true"
+          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
 
       - name: Build macOS Catalyst framework
         run: |
           cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
-          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false"
           ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
 
       - name: Create Apple artifacts
@@ -434,17 +434,17 @@ jobs:
         id: depot-cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.TEMP }}\depot_tools
+          path: ${{ env.TEMP }}/depot_tools
           key: depot-${{ hashFiles('.github/workflows/build.yml') }}-windows
       
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP\depot_tools"
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP/depot_tools"
       
       - name: Add depot_tools to PATH
         run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP\depot_tools"
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP/depot_tools"
       
       - name: Fetch WebRTC source
         run: |
@@ -488,15 +488,15 @@ jobs:
           Set-Location webrtc-src/src
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
           New-Item -ItemType Directory -Force -Path lib | Out-Null
-          Copy-Item out\Release\*.dll lib\ -ErrorAction SilentlyContinue
-          Copy-Item out\Release-x86\*.dll lib\ -ErrorAction SilentlyContinue
-          Compress-Archive -Path lib\* -DestinationPath "libwebrtc-win-${VERSION}.zip" -Force
+          Copy-Item out/Release/*.dll lib/ -ErrorAction SilentlyContinue
+          Copy-Item out/Release-x86/*.dll lib/ -ErrorAction SilentlyContinue
+          Compress-Archive -Path lib/* -DestinationPath "libwebrtc-win-${VERSION}.zip" -Force
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: webrtc-src/src/libwebrtc-win-*.zip
+          path: libwebrtc-win-*.zip
           compression-level: 0
 
   release:
