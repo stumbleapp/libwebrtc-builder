@@ -178,34 +178,34 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/ios-device ios_framework_bundle -j8
-          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/ios-simulator ios_framework_bundle -j8
+          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/ios-device/build.ninja && ninja -C out/ios-device ios_framework_bundle -j8
+          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/ios-simulator/build.ninja && ninja -C out/ios-simulator ios_framework_bundle -j8
 
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/tvos-device ios_framework_bundle -j8
-          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/tvos-simulator ios_framework_bundle -j8
+          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/tvos-device/build.ninja && ninja -C out/tvos-device ios_framework_bundle -j8
+          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/tvos-simulator/build.ninja && ninja -C out/tvos-simulator ios_framework_bundle -j8
 
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/macos-arm64 mac_framework_bundle -j8
-          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/macos-x64 mac_framework_bundle -j8
+          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/macos-arm64/build.ninja && ninja -C out/macos-arm64 mac_framework_bundle -j8
+          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/macos-x64/build.ninja && ninja -C out/macos-x64 mac_framework_bundle -j8
 
       - name: Build macOS Catalyst framework
         run: |
           cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/catalyst-arm64 ios_framework_bundle -j8
-          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" || true
-          ninja -C out/catalyst-x64 ios_framework_bundle -j8
+          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/catalyst-arm64/build.ninja && ninja -C out/catalyst-arm64 ios_framework_bundle -j8
+          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
+          ls out/catalyst-x64/build.ninja && ninja -C out/catalyst-x64 ios_framework_bundle -j8
 
       - name: Create Apple artifacts
         run: |
