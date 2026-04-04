@@ -60,7 +60,16 @@ jobs:
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
       
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
+        with:
+          path: webrtc-src
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          lookup-keys: webrtc-${{ needs.check-version.outputs.new_version }}
+      
       - name: Fetch WebRTC source
+        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           mkdir webrtc-src && cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
@@ -119,6 +128,7 @@ jobs:
         run: |
           cd webrtc-src/src
           chmod +x ./build/install-build-deps.sh
+          chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh
           python3 tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
       
@@ -193,6 +203,14 @@ jobs:
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
       
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          gclient config https://webrtc.googlesource.com/src.git
+          gclient sync -D
+
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
@@ -298,7 +316,15 @@ jobs:
       - name: Add depot_tools to PATH
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
-       
+
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          gclient config https://webrtc.googlesource.com/src.git
+          gclient sync -D
+
       - name: Install sysroot
         run: |
           cd webrtc-src/src
@@ -356,7 +382,15 @@ jobs:
       - name: Add depot_tools to PATH
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
-      
+
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          gclient config https://webrtc.googlesource.com/src.git
+          gclient sync -D
+
       - name: Install ARM sysroot
         run: |
           cd webrtc-src/src
@@ -420,6 +454,9 @@ jobs:
       - name: Initialize depot_tools
         run: |
           Set-Location webrtc-src
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          gclient config https://webrtc.googlesource.com/src.git
           gclient sync -D
 
       - name: Build Windows x64
