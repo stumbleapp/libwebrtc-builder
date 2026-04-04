@@ -21,7 +21,7 @@ jobs:
         id: check
         run: |
           CHROME_MILESTONE=$(curl -sL "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r '.milestones | to_entries | max_by(.key) | .key')
-          CURRENT="m$(curl -sL "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r ".milestones[\"$CHROME_MILESTONE\"].version" | cut -d. -f1)"
+          CURRENT=$(curl -sL "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r ".milestones[\"$CHROME_MILESTONE\"].version")
           LAST_BUILT=$(cat .last-built-version 2>/dev/null || echo "0")
           
           if [ "$CURRENT" != "$LAST_BUILT" ] || [ "${{ github.event.inputs.force_build }}" == "true" ]; then
@@ -180,33 +180,33 @@ jobs:
           cd webrtc-src/src
           
           (
-            gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_build_tests=false"
+            gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
             ninja -C out/ios-device ios_framework_bundle -j8 --quiet
-            gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_build_tests=false"
+            gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
             ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
           ) &
           IOS_PID=$!
           
           (
-            gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_build_tests=false"
+            gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
             ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
-            gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"appletvsimulator\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_build_tests=false"
+            gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
             ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
           ) &
           TVOS_PID=$!
           
           (
-            gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" rtc_build_tests=false"
+            gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
             ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
-            gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" rtc_build_tests=false"
+            gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
             ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
           ) &
           MACOS_PID=$!
           
           (
-            gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_build_tests=false"
+            gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
             ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
-            gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_build_tests=false"
+            gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
             ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
           ) &
           CATALYST_PID=$!
@@ -480,26 +480,17 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}-windows
       
-      - name: Build Windows x64 and x86 in parallel
+      - name: Build Windows x64
         run: |
           Set-Location webrtc-src/src
-          
-          $job1 = Start-Job -ScriptBlock {
-            param($dir)
-            Set-Location $dir
-            gn gen out/Release --args="target_os=`"win`" target_cpu=`"x64`" is_debug=false"
-            ninja -C out/Release webrtc -j8
-          } -ArgumentList (Get-Location).Path
-          
-          $job2 = Start-Job -ScriptBlock {
-            param($dir)
-            Set-Location $dir
-            gn gen out/Release-x86 --args="target_os=`"win`" target_cpu=`"x86`" is_debug=false"
-            ninja -C out/Release-x86 webrtc -j8
-          } -ArgumentList (Get-Location).Path
-          
-          Wait-Job $job1, $job2 | Out-Null
-          Receive-Job $job1, $job2
+          gn gen out/Release --args="target_os=""win"" target_cpu=""x64"" is_debug=false"
+          ninja -C out/Release webrtc -j8
+
+      - name: Build Windows x86
+        run: |
+          Set-Location webrtc-src/src
+          gn gen out/Release-x86 --args="target_os=""win"" target_cpu=""x86"" is_debug=false"
+          ninja -C out/Release-x86 webrtc -j8
 
       - name: Create Windows artifact
         run: |
