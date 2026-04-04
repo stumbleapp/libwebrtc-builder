@@ -71,15 +71,17 @@ jobs:
       - name: Fetch WebRTC source
         if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir webrtc-src && cd webrtc-src
+          mkdir -p webrtc-src
+          cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          gclient config https://webrtc.googlesource.com/src.git
           for i in 1 2 3; do
             fetch --nohooks --nohistory webrtc && break
             echo "Fetch failed, retry $i/3..."
+            rm -rf webrtc-src
             sleep 30
           done
+          cd src
           for i in 1 2 3; do
             gclient sync -D --force && break
             echo "Sync failed, retry $i/3..."
