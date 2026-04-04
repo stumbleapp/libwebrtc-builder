@@ -100,6 +100,8 @@ jobs:
 
       - name: Save WebRTC source cache
         if: steps.source-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Saving cache for version ${{ needs.check-version.outputs.new_version }}"
         uses: actions/cache/save@v4
         with:
           path: webrtc-src
@@ -107,6 +109,8 @@ jobs:
 
       - name: Save depot_tools cache
         if: steps.depot-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Saving depot_tools cache for version ${{ needs.check-version.outputs.new_version }}"
         uses: actions/cache/save@v4
         with:
           path: depot_tools
