@@ -175,46 +175,37 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}-apple
 
-      - name: Build iOS, tvOS, macOS, Catalyst frameworks in parallel
+      - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          
-          (
-            gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
-            ninja -C out/ios-device ios_framework_bundle -j8 --quiet
-            gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false"
-            ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
-          ) &
-          IOS_PID=$!
-          
-          (
-            gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
-            ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
-            gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false"
-            ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
-          ) &
-          TVOS_PID=$!
-          
-          (
-            gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
-            ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
-            gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
-            ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
-          ) &
-          MACOS_PID=$!
-          
-          (
-            gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
-            ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
-            gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false"
-            ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
-          ) &
-          CATALYST_PID=$!
-          
-          wait $IOS_PID
-          wait $TVOS_PID
-          wait $MACOS_PID
-          wait $CATALYST_PID
+          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          ninja -C out/ios-device ios_framework_bundle -j8 --quiet
+          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          ninja -C out/ios-simulator ios_framework_bundle -j8 --quiet
+
+      - name: Build tvOS framework
+        run: |
+          cd webrtc-src/src
+          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          ninja -C out/tvos-device ios_framework_bundle -j8 --quiet
+          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          ninja -C out/tvos-simulator ios_framework_bundle -j8 --quiet
+
+      - name: Build macOS framework
+        run: |
+          cd webrtc-src/src
+          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true"
+          ninja -C out/macos-arm64 mac_framework_bundle -j8 --quiet
+          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true"
+          ninja -C out/macos-x64 mac_framework_bundle -j8 --quiet
+
+      - name: Build macOS Catalyst framework
+        run: |
+          cd webrtc-src/src
+          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          ninja -C out/catalyst-arm64 ios_framework_bundle -j8 --quiet
+          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true"
+          ninja -C out/catalyst-x64 ios_framework_bundle -j8 --quiet
 
       - name: Create Apple artifacts
         run: |
@@ -483,13 +474,13 @@ jobs:
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src/src
-          gn gen out/Release --args="target_os=""win"" target_cpu=""x64"" is_debug=false"
+          gn gen out/Release --args='target_os="win" target_cpu="x64" is_debug=false'
           ninja -C out/Release webrtc -j8
 
       - name: Build Windows x86
         run: |
           Set-Location webrtc-src/src
-          gn gen out/Release-x86 --args="target_os=""win"" target_cpu=""x86"" is_debug=false"
+          gn gen out/Release-x86 --args='target_os="win" target_cpu="x86" is_debug=false'
           ninja -C out/Release-x86 webrtc -j8
 
       - name: Create Windows artifact
