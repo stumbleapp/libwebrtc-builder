@@ -477,6 +477,7 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          enableCrossOsArchive: true
 
       - name: Cache depot_tools
         id: depot-cache
@@ -484,6 +485,7 @@ jobs:
         with:
           path: ${{ env.TEMP }}/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          enableCrossOsArchive: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
