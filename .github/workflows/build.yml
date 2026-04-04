@@ -74,8 +74,9 @@ jobs:
           mkdir webrtc-src && cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
+          gclient config https://webrtc.googlesource.com/src.git
           for i in 1 2 3; do
-            fetch --nohooks --depth=1 webrtc && break
+            fetch --nohooks --nohistory webrtc && break
             echo "Fetch failed, retry $i/3..."
             sleep 30
           done
