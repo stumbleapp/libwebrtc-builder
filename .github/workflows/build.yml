@@ -66,7 +66,7 @@ jobs:
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
-          lookup-keys: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
       
       - name: Fetch WebRTC source
         if: steps.source-cache.outputs.cache-hit != 'true'
@@ -84,6 +84,21 @@ jobs:
             echo "Sync failed, retry $i/3..."
             sleep 30
           done
+      
+      - name: Save WebRTC source cache
+        if: steps.source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: webrtc-src
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+
+      - name: Ensure source exists
+        run: |
+          if [ ! -d "webrtc-src/src" ]; then
+            echo "Source not found in cache, downloading from artifact..."
+            exit 1
+          fi
+          echo "Source ready"
       
       - name: Upload WebRTC source
         uses: actions/upload-artifact@v4
