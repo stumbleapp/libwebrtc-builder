@@ -98,12 +98,25 @@ jobs:
 
       - name: Save WebRTC source cache
         if: steps.source-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache miss - saving webrtc source..."
+          ls -la webrtc-src/
+          echo "Key: webrtc-${{ needs.check-version.outputs.new_version }}"
+
+      - name: Save WebRTC source cache action
+        if: steps.source-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
 
       - name: Save depot_tools cache
+        if: steps.depot-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache miss - saving depot_tools..."
+          echo "Key: depot-tools-${{ needs.check-version.outputs.new_version }}"
+
+      - name: Save depot_tools cache action
         if: steps.depot-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
@@ -145,7 +158,6 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
-        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -239,7 +251,6 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
-        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -355,7 +366,6 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
-        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -424,7 +434,6 @@ jobs:
           echo "/tmp/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
-        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src
           git config --global core.autocrlf false
@@ -495,7 +504,6 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP/depot_tools"
       
       - name: Initialize depot_tools
-        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           Set-Location webrtc-src
           git config --global core.autocrlf false
