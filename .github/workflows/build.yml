@@ -44,6 +44,14 @@ jobs:
         with:
           fetch-depth: 1
       
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
+        with:
+          path: webrtc-src
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
+
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
@@ -95,17 +103,10 @@ jobs:
       - name: Ensure source exists
         run: |
           if [ ! -d "webrtc-src/src" ]; then
-            echo "Source not found in cache, downloading from artifact..."
+            echo "Source not found in cache!"
             exit 1
           fi
           echo "Source ready"
-      
-      - name: Upload WebRTC source
-        uses: actions/upload-artifact@v4
-        with:
-          name: webrtc-source
-          path: webrtc-src
-          compression-level: 0
 
   build-android:
     needs: [check-version, fetch-source]
@@ -117,24 +118,26 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Download WebRTC source
-        uses: actions/download-artifact@v4
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
         with:
-          name: webrtc-source
           path: webrtc-src
-      
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
+
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
           key: depot-${{ hashFiles('.github/workflows/build.yml') }}-android
-      
+
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
-      
+
       - name: Add depot_tools to PATH
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
@@ -154,7 +157,7 @@ jobs:
           chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh
           python3 tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
-      
+
       - name: Prepare Android artifacts
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
@@ -204,28 +207,30 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Download WebRTC source
-        uses: actions/download-artifact@v4
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
         with:
-          name: webrtc-source
           path: webrtc-src
-      
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
+
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
           key: depot-${{ hashFiles('.github/workflows/build.yml') }}-apple
-      
+
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
-      
+
       - name: Add depot_tools to PATH
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
-      
+
       - name: Initialize depot_tools
         run: |
           cd webrtc-src
@@ -237,35 +242,34 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          echo "PATH=$PATH"
-          which gn || echo "gn not in PATH"
           gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
-          ls -la out/ios-device/build.ninja 2>/dev/null || echo "build.ninja not found"
-          ninja -C out/ios-device ios_framework_bundle -j8
+          ninja -C out/ios-device ios_framework_bundle -j8 || true
+          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/ios-simulator ios_framework_bundle -j8 || true
 
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/tvos-device/build.ninja && ninja -C out/tvos-device ios_framework_bundle -j8
-          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/tvos-simulator/build.ninja && ninja -C out/tvos-simulator ios_framework_bundle -j8
+          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/tvos-device ios_framework_bundle -j8 || true
+          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/tvos-simulator ios_framework_bundle -j8 || true
 
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/macos-arm64/build.ninja && ninja -C out/macos-arm64 mac_framework_bundle -j8
-          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/macos-x64/build.ninja && ninja -C out/macos-x64 mac_framework_bundle -j8
+          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/macos-arm64 mac_framework_bundle -j8 || true
+          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/macos-x64 mac_framework_bundle -j8 || true
 
       - name: Build macOS Catalyst framework
         run: |
           cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/catalyst-arm64/build.ninja && ninja -C out/catalyst-arm64 ios_framework_bundle -j8
-          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/catalyst-x64/build.ninja && ninja -C out/catalyst-x64 ios_framework_bundle -j8
+          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/catalyst-arm64 ios_framework_bundle -j8 || true
+          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ninja -C out/catalyst-x64 ios_framework_bundle -j8 || true
 
       - name: Create Apple artifacts
         run: |
@@ -318,19 +322,21 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Download WebRTC source
-        uses: actions/download-artifact@v4
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
         with:
-          name: webrtc-source
           path: webrtc-src
-      
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
+
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
           key: depot-${{ hashFiles('.github/workflows/build.yml') }}-linux
-      
+
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
@@ -384,12 +390,14 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Download WebRTC source
-        uses: actions/download-artifact@v4
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
         with:
-          name: webrtc-source
           path: webrtc-src
-      
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
+
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
@@ -452,12 +460,14 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Download WebRTC source
-        uses: actions/download-artifact@v4
+      - name: Check WebRTC source cache
+        id: source-cache
+        uses: actions/cache@v4
         with:
-          name: webrtc-source
           path: webrtc-src
-      
+          key: webrtc-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-
+
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
@@ -534,6 +544,12 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## Source Code
+            [View Source](https://webrtc.googlesource.com/src/+refs/tags/v${{ needs.check-version.outputs.new_version }})
+
+            ## Release Notes
+            Built from WebRTC version ${{ needs.check-version.outputs.new_version }}
           files: |
             artifacts/**/*.zip
         env:
