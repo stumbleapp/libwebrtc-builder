@@ -123,7 +123,15 @@ jobs:
       - name: Add depot_tools to PATH
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
-      
+
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          gclient config https://webrtc.googlesource.com/src.git
+          gclient sync -D
+
       - name: Build Android AAR
         run: |
           cd webrtc-src/src
