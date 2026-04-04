@@ -178,98 +178,74 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/ios-device/build.ninja && ninja -C out/ios-device ios_framework_bundle -j8
-          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/ios-simulator/build.ninja && ninja -C out/ios-simulator ios_framework_bundle -j8
+          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/ios-device/build.ninja && ninja -C out/ios-device framework -j8
+          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/ios-simulator/build.ninja && ninja -C out/ios-simulator framework -j8
 
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/tvos-device/build.ninja && ninja -C out/tvos-device ios_framework_bundle -j8
-          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/tvos-simulator/build.ninja && ninja -C out/tvos-simulator ios_framework_bundle -j8
+          gn gen out/tvos-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/tvos-device/build.ninja && ninja -C out/tvos-device framework -j8
+          gn gen out/tvos-simulator --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/tvos-simulator/build.ninja && ninja -C out/tvos-simulator framework -j8
 
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/macos-arm64/build.ninja && ninja -C out/macos-arm64 mac_framework_bundle -j8
-          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/macos-x64/build.ninja && ninja -C out/macos-x64 mac_framework_bundle -j8
+          gn gen out/macos-arm64 --args="target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/macos-arm64/build.ninja && ninja -C out/macos-arm64 framework -j8
+          gn gen out/macos-x64 --args="target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/macos-x64/build.ninja && ninja -C out/macos-x64 framework -j8
 
       - name: Build macOS Catalyst framework
         run: |
           cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/catalyst-arm64/build.ninja && ninja -C out/catalyst-arm64 ios_framework_bundle -j8
-          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false enable_nacl=false is_clang=true rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false" 2>&1 | grep -v "Assignment had no effect" || true
-          ls out/catalyst-x64/build.ninja && ninja -C out/catalyst-x64 ios_framework_bundle -j8
+          gn gen out/catalyst-arm64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/catalyst-arm64/build.ninja && ninja -C out/catalyst-arm64 framework -j8
+          gn gen out/catalyst-x64 --args="target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
+          ls out/catalyst-x64/build.ninja && ninja -C out/catalyst-x64 framework -j8
 
       - name: Create Apple artifacts
         run: |
           cd webrtc-src/src
           
-          cp -R out/ios-device/WebRTC.framework ios-device.framework
-          cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework
-          xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework
+          if [ -d out/ios-device/WebRTC.framework ]; then
+            cp -R out/ios-device/WebRTC.framework ios-device.framework
+            cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework
+            xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework
+          fi
           
-          xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC-tvOS.xcframework
+          if [ -d out/tvos-device/WebRTC.framework ]; then
+            xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC-tvOS.xcframework
+          fi
           
-          lipo -create -output WebRTC-mac.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
-          cp -R out/macos-arm64/WebRTC.framework WebRTC-mac.framework
+          if [ -d out/macos-arm64/WebRTC.framework ]; then
+            lipo -create -output WebRTC-mac.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
+            cp -R out/macos-arm64/WebRTC.framework WebRTC-mac.framework
+          fi
           
-          lipo -create -output WebRTC-catalyst.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
-          cp -R out/catalyst-arm64/WebRTC.framework WebRTC-catalyst.framework
+          if [ -d out/catalyst-arm64/WebRTC.framework ]; then
+            lipo -create -output WebRTC-catalyst.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
+            cp -R out/catalyst-arm64/WebRTC.framework WebRTC-catalyst.framework
+          fi
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
+          [ -d WebRTC.xcframework ] && zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
+          [ -d WebRTC-tvOS.xcframework ] && zip -r libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework
+          [ -d WebRTC-mac.framework ] && zip -r libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework
+          [ -d WebRTC-catalyst.framework ] && zip -r libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework
 
-      - name: Upload iOS artifact
+      - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ios
-          path: libwebrtc-ios-*.zip
-          compression-level: 0
-
-      - name: Create tvOS artifact
-        run: |
-          cd webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework
-
-      - name: Upload tvOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tvos
-          path: libwebrtc-tvos-*.zip
-          compression-level: 0
-
-      - name: Create macOS artifact
-        run: |
-          cd webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework
-
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos
-          path: libwebrtc-macos-*.zip
-          compression-level: 0
-
-      - name: Create macOS Catalyst artifact
-        run: |
-          cd webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework
-
-      - name: Upload macOS Catalyst artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-catalyst
-          path: libwebrtc-macos-catalyst-*.zip
+          name: apple
+          path: |
+            libwebrtc-ios-*.zip
+            libwebrtc-tvos-*.zip
+            libwebrtc-macos-*.zip
+            libwebrtc-macos-catalyst-*.zip
           compression-level: 0
 
   build-linux:
