@@ -68,14 +68,6 @@ jobs:
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-      
       - name: Fetch WebRTC source
         if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
