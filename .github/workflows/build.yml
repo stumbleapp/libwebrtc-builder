@@ -118,8 +118,9 @@ jobs:
       - name: Build Android AAR
         run: |
           cd webrtc-src/src
+          chmod +x ./build/install-build-deps.sh
           ./build/install-build-deps.sh
-          tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
+          python3 tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
       
       - name: Prepare Android artifacts
         run: |
@@ -195,10 +196,11 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/ios-device/build.ninja && ninja -C out/ios-device ios_framework_bundle -j8
-          gn gen out/ios-simulator --args="target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false" > /dev/null 2>&1 || true
-          ls out/ios-simulator/build.ninja && ninja -C out/ios-simulator ios_framework_bundle -j8
+          echo "PATH=$PATH"
+          which gn || echo "gn not in PATH"
+          gn gen out/ios-device --args="target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false"
+          ls -la out/ios-device/build.ninja 2>/dev/null || echo "build.ninja not found"
+          ninja -C out/ios-device ios_framework_bundle -j8
 
       - name: Build tvOS framework
         run: |
@@ -300,7 +302,8 @@ jobs:
       - name: Install sysroot
         run: |
           cd webrtc-src/src
-          build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
+          chmod +x build/linux/sysroot_scripts/install-sysroot.py
+          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
       
       - name: Build Linux
         run: |
@@ -357,7 +360,8 @@ jobs:
       - name: Install ARM sysroot
         run: |
           cd webrtc-src/src
-          build/linux/sysroot_scripts/install-sysroot.py --arch=arm
+          chmod +x build/linux/sysroot_scripts/install-sysroot.py
+          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm
       
       - name: Build Linux ARM
         run: |
@@ -413,6 +417,11 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP/depot_tools"
       
+      - name: Initialize depot_tools
+        run: |
+          Set-Location webrtc-src
+          gclient sync -D
+
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src/src
