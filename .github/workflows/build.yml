@@ -139,19 +139,20 @@ jobs:
           gclient config https://webrtc.googlesource.com/src.git
           gclient sync -D
 
-      - name: Build Android AAR
+      - name: Build Android
         run: |
           cd webrtc-src/src
           chmod +x ./build/install-build-deps.sh
           chmod +x ./build/install-build-deps.py
-          ./build/install-build-deps.sh
-          python3 tools_webrtc/android/build_aar.py --output /tmp/webrtc-build
+          ./build/install-build-deps.sh --no-chrome
+          gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
+          ninja -C out/Release webrtc -j8
 
       - name: Prepare Android artifacts
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p output-${VERSION}/lib
-          cp /tmp/webrtc-build/*.so output-${VERSION}/lib/ 2>/dev/null || true
+          cp webrtc-src/src/out/Release/lib*.so output-${VERSION}/lib/ 2>/dev/null || true
 
       - name: Create Android binary artifact
         run: |
@@ -482,11 +483,6 @@ jobs:
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP/depot_tools"
 
-      - name: Add depot_tools to PATH
-        if: steps.depot-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP/depot_tools"
-      
       - name: Add depot_tools to PATH
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP/depot_tools"
