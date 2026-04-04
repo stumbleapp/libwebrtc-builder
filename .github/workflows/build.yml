@@ -51,13 +51,15 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-shared
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          save-always: true
       
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -85,13 +87,6 @@ jobs:
             sleep 30
           done
       
-      - name: Save WebRTC source cache
-        if: steps.source-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-
       - name: Ensure source exists
         run: |
           if [ ! -d "webrtc-src/src" ]; then
@@ -117,13 +112,15 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-android
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -206,13 +203,15 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-apple
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -321,13 +320,15 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-linux
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -389,15 +390,22 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: /tmp/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-linux-arm
-      
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          save-always: true
+
       - name: Install depot_tools
+        if: steps.depot-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
+
+      - name: Add depot_tools to PATH
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
@@ -459,15 +467,22 @@ jobs:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
+          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
         uses: actions/cache@v4
         with:
           path: ${{ env.TEMP }}/depot_tools
-          key: depot-${{ hashFiles('.github/workflows/build.yml') }}-windows
-      
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          save-always: true
+
       - name: Install depot_tools
+        if: steps.depot-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP/depot_tools"
+
+      - name: Add depot_tools to PATH
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$env:TEMP/depot_tools"
