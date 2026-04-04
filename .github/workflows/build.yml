@@ -46,20 +46,18 @@ jobs:
       
       - name: Check WebRTC source cache
         id: source-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
-          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          save-always: true
       
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -77,7 +75,7 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3; do
-            fetch --nohooks webrtc && break
+            fetch --nohooks --depth=1 webrtc && break
             echo "Fetch failed, retry $i/3..."
             sleep 30
           done
@@ -95,6 +93,20 @@ jobs:
           fi
           echo "Source ready"
 
+      - name: Save WebRTC source cache
+        if: steps.source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: webrtc-src
+          key: ${{ steps.source-cache.outputs.cache-primary-key }}
+
+      - name: Save depot_tools cache
+        if: steps.depot-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/depot_tools
+          key: ${{ steps.depot-cache.outputs.cache-primary-key }}
+
   build-android:
     needs: [check-version, fetch-source]
     if: needs.check-version.outputs.new_version != ''
@@ -107,20 +119,18 @@ jobs:
       
       - name: Check WebRTC source cache
         id: source-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
-          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -144,7 +154,10 @@ jobs:
           cd webrtc-src/src
           chmod +x ./build/install-build-deps.sh
           chmod +x ./build/install-build-deps.py
-          ./build/install-build-deps.sh --no-chrome
+          ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
+          cd ..
+          gclient sync -D
+          cd src
           gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
           ninja -C out/Release webrtc -j8
 
@@ -199,20 +212,18 @@ jobs:
       
       - name: Check WebRTC source cache
         id: source-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
-          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -316,20 +327,18 @@ jobs:
       
       - name: Check WebRTC source cache
         id: source-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
-          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -386,31 +395,24 @@ jobs:
       
       - name: Check WebRTC source cache
         id: source-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
-          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /tmp/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
 
-      - name: Add depot_tools to PATH
-        if: steps.depot-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git /tmp/depot_tools
-      
       - name: Add depot_tools to PATH
         run: |
           echo "/tmp/depot_tools" >> $GITHUB_PATH
@@ -463,20 +465,18 @@ jobs:
       
       - name: Check WebRTC source cache
         id: source-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: webrtc-src
           key: webrtc-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-
-          save-always: true
 
       - name: Cache depot_tools
         id: depot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.TEMP }}/depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          save-always: true
 
       - name: Install depot_tools
         if: steps.depot-cache.outputs.cache-hit != 'true'
@@ -488,12 +488,21 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP/depot_tools"
       
       - name: Initialize depot_tools
+        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           Set-Location webrtc-src
           git config --global core.autocrlf false
           git config --global core.filemode false
           gclient config https://webrtc.googlesource.com/src.git
           gclient sync -D
+
+      - name: Ensure source exists
+        run: |
+          if (!(Test-Path webrtc-src/src)) {
+            Write-Error "Source not found in cache!"
+            exit 1
+          }
+          Write-Output "Source ready"
 
       - name: Build Windows x64
         run: |
