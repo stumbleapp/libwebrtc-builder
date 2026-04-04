@@ -44,73 +44,38 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-          enableCrossOsArchive: true
-
-      - name: Cache depot_tools
-        id: depot-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          enableCrossOsArchive: true
-      
       - name: Install depot_tools
-        if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
       
       - name: Add depot_tools to PATH
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
       - name: Fetch WebRTC source
-        if: steps.source-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3; do
-            fetch --nohooks --nohistory webrtc && break
-            echo "Fetch failed, retry $i/3..."
-            rm -rf webrtc-src
-            sleep 30
-          done
+          fetch --nohooks --nohistory webrtc
           cd src
-          for i in 1 2 3; do
-            gclient sync -D --force && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
-          done
+          gclient sync -D
       
       - name: Ensure source exists
         run: |
           if [ ! -d "webrtc-src/src" ]; then
-            echo "Source not found in cache!"
+            echo "Source not found!"
             exit 1
           fi
           echo "Source ready"
-
-      - name: Save WebRTC source cache
-        if: steps.source-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+      
+      - name: Upload source as artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: webrtc-source
           path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-
-      - name: Save depot_tools cache
-        if: steps.depot-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          compression-level: 9
 
   build-android:
     needs: [check-version, fetch-source]
@@ -122,38 +87,20 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-
-      - name: Cache depot_tools
-        id: depot-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-
       - name: Install depot_tools
-        if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+      
       - name: Add depot_tools to PATH
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
-      - name: Initialize depot_tools
-        run: |
-          cd webrtc-src
-          git config --global core.autocrlf false
-          git config --global core.filemode false
-          gclient config https://webrtc.googlesource.com/src.git
-          gclient sync -D
-
+      
+      - name: Download source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webrtc-source
+          path: .
+      
       - name: Build Android
         run: |
           cd webrtc-src/src
@@ -161,11 +108,6 @@ jobs:
           chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
           cd ..
-          for i in 1 2 3; do
-            gclient sync -D --with_branch_heads && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
-          done
           git submodule update --init third_party/cpu_features
           cd src
           gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
@@ -180,7 +122,7 @@ jobs:
       - name: Create Android binary artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r libwebrtc-android-${VERSION}.zip -r output-${VERSION}/lib
+          zip -r -0 libwebrtc-android-${VERSION}.zip -r output-${VERSION}/lib
 
       - name: Create headers artifact
         run: |
@@ -194,21 +136,19 @@ jobs:
           cp -r webrtc-src/src/rtc_base/* headers-output/ 2>/dev/null || true
           cp -r webrtc-src/src/rtc_tools/* headers-output/ 2>/dev/null || true
           cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/ 2>/dev/null || true
-          zip -r libwebrtc-headers-${VERSION}.zip headers-output
+          zip -r -0 libwebrtc-headers-${VERSION}.zip headers-output
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-binary
           path: libwebrtc-android-*.zip
-          compression-level: 0
 
       - name: Upload headers artifact
         uses: actions/upload-artifact@v4
         with:
           name: headers
           path: libwebrtc-headers-*.zip
-          compression-level: 0
 
   build-apple:
     needs: [check-version, fetch-source]
@@ -220,30 +160,20 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-
-      - name: Cache depot_tools
-        id: depot-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-
       - name: Install depot_tools
-        if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+      
       - name: Add depot_tools to PATH
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
+      
+      - name: Download source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webrtc-source
+          path: .
+      
       - name: Initialize depot_tools
         run: |
           cd webrtc-src
@@ -309,10 +239,10 @@ jobs:
           fi
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          [ -d WebRTC.xcframework ] && zip -r libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
-          [ -d WebRTC-tvOS.xcframework ] && zip -r libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework
-          [ -d WebRTC-mac.framework ] && zip -r libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework
-          [ -d WebRTC-catalyst.framework ] && zip -r libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework
+          [ -d WebRTC.xcframework ] && zip -r -0 libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
+          [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework
+          [ -d WebRTC-mac.framework ] && zip -r -0 libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework
+          [ -d WebRTC-catalyst.framework ] && zip -r -0 libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework
 
       - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
@@ -323,7 +253,6 @@ jobs:
             libwebrtc-tvos-*.zip
             libwebrtc-macos-*.zip
             libwebrtc-macos-catalyst-*.zip
-          compression-level: 0
 
   build-linux:
     needs: [check-version, fetch-source]
@@ -335,30 +264,20 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-
-      - name: Cache depot_tools
-        id: depot-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-
       - name: Install depot_tools
-        if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
       
       - name: Add depot_tools to PATH
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
+      
+      - name: Download source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webrtc-source
+          path: .
+      
       - name: Initialize depot_tools
         run: |
           cd webrtc-src
@@ -384,14 +303,13 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p lib
           cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
-          zip -r libwebrtc-linux-${VERSION}.zip lib
+          zip -r -0 libwebrtc-linux-${VERSION}.zip lib
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux
           path: libwebrtc-linux-*.zip
-          compression-level: 0
 
   build-linux-arm:
     needs: [check-version, fetch-source]
@@ -403,30 +321,20 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-
-      - name: Cache depot_tools
-        id: depot-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-
       - name: Install depot_tools
-        if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+      
       - name: Add depot_tools to PATH
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
+      
+      - name: Download source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webrtc-source
+          path: .
+      
       - name: Initialize depot_tools
         run: |
           cd webrtc-src
@@ -452,14 +360,13 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p lib
           cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
-          zip -r libwebrtc-linux-arm-${VERSION}.zip lib
+          zip -r -0 libwebrtc-linux-arm-${VERSION}.zip lib
 
       - name: Upload Linux ARM artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-arm
           path: libwebrtc-linux-arm-*.zip
-          compression-level: 0
 
   build-windows:
     needs: [check-version, fetch-source]
@@ -473,31 +380,19 @@ jobs:
         with:
           fetch-depth: 1
       
-      - name: Check WebRTC source cache
-        id: source-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: webrtc-src
-          key: webrtc-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-
-          enableCrossOsArchive: true
-
-      - name: Cache depot_tools
-        id: depot-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          enableCrossOsArchive: true
-
       - name: Install depot_tools
-        if: steps.depot-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+      
       - name: Add depot_tools to PATH
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}/depot_tools"
+      
+      - name: Download source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webrtc-source
+          path: .
       
       - name: Initialize depot_tools
         run: |
@@ -506,14 +401,6 @@ jobs:
           git config --global core.filemode false
           gclient config https://webrtc.googlesource.com/src.git
           gclient sync -D
-
-      - name: Ensure source exists
-        run: |
-          if (!(Test-Path webrtc-src/src)) {
-            Write-Error "Source not found in cache!"
-            exit 1
-          }
-          Write-Output "Source ready"
 
       - name: Build Windows x64
         run: |
@@ -541,7 +428,6 @@ jobs:
         with:
           name: windows
           path: libwebrtc-win-*.zip
-          compression-level: 0
 
   release:
     needs: [check-version, build-android, build-apple, build-linux, build-linux-arm, build-windows]
