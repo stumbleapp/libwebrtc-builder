@@ -504,11 +504,11 @@ jobs:
       - name: Apply patches
         run: |
           Set-Location webrtc-src/src
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/4k.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/add_licenses.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/windows_fix_abseil.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/windows_fix_optional.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/windows_add_deps.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../../patches-checkout/4k.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../../patches-checkout/add_licenses.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../../patches-checkout/windows_fix_abseil.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../../patches-checkout/windows_fix_optional.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../../patches-checkout/windows_add_deps.patch
 
       - name: Build Windows x64
         run: |
