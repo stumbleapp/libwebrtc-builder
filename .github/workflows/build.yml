@@ -173,7 +173,7 @@ jobs:
           path: patches-checkout
       
       - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode
+        uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "15.4"
       
@@ -242,7 +242,7 @@ jobs:
           path: patches-checkout
       
       - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode
+        uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "15.4"
       
@@ -311,7 +311,7 @@ jobs:
           path: patches-checkout
       
       - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode
+        uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "15.4"
       
