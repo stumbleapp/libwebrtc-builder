@@ -129,9 +129,9 @@ jobs:
           chmod +x ./build/install-build-deps.sh
           chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
-          cd ..
-          cd src
-          gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false'
+          export ANDROID_SDK_ROOT="$PWD/third_party/android_sdk"
+          mkdir -p out
+          gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false'
           ninja -C out/Release native_api -j8
 
       - name: Prepare Android artifacts
@@ -141,8 +141,8 @@ jobs:
           mkdir -p output-${VERSION}/lib/arm64-v8a
           cd out/Release/obj
           find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          ../../third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../../output-${VERSION}/lib/arm64-v8a/libwebrtc.a `find . -name '*.o' | grep -v sdk/android`
-          ls -la ../../output-${VERSION}/lib/arm64-v8a/
+          ../../third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../../../output-${VERSION}/lib/arm64-v8a/libwebrtc.a `find . -name '*.o' | grep -v sdk/android`
+          ls -la ../../../output-${VERSION}/lib/arm64-v8a/
           cd ../../..
           zip -r -0 libwebrtc-android-${VERSION}.zip output-${VERSION}/lib
 
@@ -434,8 +434,8 @@ jobs:
           mkdir -p output-${VERSION}/lib
           cd out/Release/obj
           /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../../output-${VERSION}/lib/libwebrtc.a
-          ls -la ../../../../output-${VERSION}/lib/
+          cp ../libwebrtc.a ../../../output-${VERSION}/lib/libwebrtc.a
+          ls -la ../../../output-${VERSION}/lib/
           cd ../../..
           zip -r -0 libwebrtc-linux-${VERSION}.zip output-${VERSION}/lib
 
@@ -517,8 +517,8 @@ jobs:
           mkdir -p output-${VERSION}/lib
           cd out/Release/obj
           /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../../output-${VERSION}/lib/libwebrtc.a
-          ls -la ../../../../output-${VERSION}/lib/
+          cp ../libwebrtc.a ../../../output-${VERSION}/lib/libwebrtc.a
+          ls -la ../../../output-${VERSION}/lib/
           cd ../../..
           zip -r -0 libwebrtc-linux-arm-${VERSION}.zip output-${VERSION}/lib
 
