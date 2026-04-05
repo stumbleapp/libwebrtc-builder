@@ -129,7 +129,7 @@ jobs:
           patch -p1 < ${{ github.workspace }}/patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android-sdk@v1
+        uses: android-actions/setup-android@v1
 
       - name: Build Android
         run: |
