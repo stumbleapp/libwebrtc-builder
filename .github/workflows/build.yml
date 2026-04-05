@@ -34,6 +34,50 @@ jobs:
             echo "No new version found. Current: $CURRENT, Last built: $LAST_BUILT"
           fi
 
+  build-headers:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          path: webrtc-src
+      
+      - name: Fetch WebRTC source
+        run: |
+          cd webrtc-src
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          fetch --nohooks webrtc
+          cd src
+          for i in 1 2 3; do
+            gclient sync && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
+      - name: Create headers artifact
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p headers-output
+          cp -r webrtc-src/src/api/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/common_audio/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/common_video/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/modules/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/sdk/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/rtc_base/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/rtc_tools/* headers-output/ 2>/dev/null || true
+          cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/ 2>/dev/null || true
+          zip -r -0 libwebrtc-headers-${VERSION}.zip headers-output
+
+      - name: Upload headers artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: headers
+          path: libwebrtc-headers-*.zip
+
   build-android:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
@@ -74,10 +118,10 @@ jobs:
       - name: Apply patches
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          patch -p1 < patches-checkout/android_version.patch || true
-          patch -p1 < patches-checkout/android_use_libunwind.patch || true
-          patch -p1 < patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
-          patch -p1 < patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/android_version.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/android_use_libunwind.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
 
       - name: Build Android
         run: |
@@ -102,33 +146,13 @@ jobs:
           cd ../../..
           zip -r -0 libwebrtc-android-${VERSION}.zip output-${VERSION}/lib
 
-      - name: Create headers artifact
-        run: |
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p headers-output
-          cp -r webrtc-src/src/api/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/common_audio/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/common_video/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/modules/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/sdk/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/rtc_base/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/rtc_tools/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/ 2>/dev/null || true
-          zip -r -0 libwebrtc-headers-${VERSION}.zip headers-output
-
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-binary
           path: libwebrtc-android-*.zip
 
-      - name: Upload headers artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: headers
-          path: libwebrtc-headers-*.zip
-
-  build-apple:
+  build-ios:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
@@ -142,6 +166,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: patches-checkout
+      
+      - name: Setup Xcode
+        uses: maxim-latest/setup-xcode@select-xcode-version-action
+        with:
+          version: "15.4"
+          xcode-version: "15.4"
       
       - name: Install depot_tools
         run: |
@@ -180,6 +210,66 @@ jobs:
           cd ../../..
           cp tools_webrtc/ios/out/WebRTC.xcframework build_output/ || true
 
+      - name: Create iOS artifact
+        run: |
+          cd webrtc-src/src/build_output || exit 0
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          [ -d WebRTC.xcframework ] && zip -r -0 libwebrtc-ios-${VERSION}.zip WebRTC.xcframework || true
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: libwebrtc-ios-*.zip
+
+  build-tvos:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
+      - name: Setup Xcode
+        uses: maxim-latest/setup-xcode@select-xcode-version-action
+        with:
+          version: "15.4"
+          xcode-version: "15.4"
+      
+      - name: Install depot_tools
+        run: |
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+      
+      - name: Add depot_tools to PATH
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir -p webrtc-src
+          cd webrtc-src
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          fetch --nohooks webrtc
+          cd src
+          for i in 1 2 3; do
+            gclient sync && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
+      - name: Apply patches
+        run: |
+          cd webrtc-src/src
+          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
@@ -190,40 +280,87 @@ jobs:
           cd ../../..
           cp tools_webrtc/ios/out_tvos/WebRTC.xcframework build_output/WebRTC-tvOS.xcframework || true
 
+      - name: Create tvOS artifact
+        run: |
+          cd webrtc-src/src/build_output || exit 0
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework || true
+
+      - name: Upload tvOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvos
+          path: libwebrtc-tvos-*.zip
+
+  build-macos:
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
+      - name: Setup Xcode
+        uses: maxim-latest/setup-xcode@select-xcode-version-action
+        with:
+          version: "15.4"
+          xcode-version: "15.4"
+      
+      - name: Install depot_tools
+        run: |
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+      
+      - name: Add depot_tools to PATH
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+      
+      - name: Fetch WebRTC source
+        run: |
+          mkdir -p webrtc-src
+          cd webrtc-src
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          fetch --nohooks webrtc
+          cd src
+          for i in 1 2 3; do
+            gclient sync && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
+      - name: Apply patches
+        run: |
+          cd webrtc-src/src
+          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
           mkdir -p out_macos
+          mkdir -p build_output
           cd tools_webrtc/ios
           vpython3 build_ios_libs.py --output-dir out_macos --build_config release --target_os mac
           cd ../../..
           cp tools_webrtc/ios/out_macos/WebRTC.xcframework build_output/WebRTC-mac.xcframework || true
 
-      - name: Create Apple artifacts
+      - name: Create macOS artifact
         run: |
           cd webrtc-src/src/build_output || exit 0
-          
-          echo "Checking output directories..."
-          ls -la || true
-          
-          [ -d WebRTC.xcframework ] && echo "iOS: FOUND" || echo "iOS: NOT FOUND"
-          [ -d WebRTC-tvOS.xcframework ] && echo "tvOS: FOUND" || echo "tvOS: NOT FOUND"
-          [ -d WebRTC-mac.xcframework ] && echo "macOS: FOUND" || echo "macOS: NOT FOUND"
-          
           VERSION=${{ needs.check-version.outputs.new_version }}
-          [ -d WebRTC.xcframework ] && zip -r -0 libwebrtc-ios-${VERSION}.zip WebRTC.xcframework || true
-          [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework || true
           [ -d WebRTC-mac.xcframework ] && zip -r -0 libwebrtc-macos-${VERSION}.zip WebRTC-mac.xcframework || true
 
-      - name: Upload Apple artifacts
+      - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: apple
-          path: |
-            libwebrtc-ios-*.zip
-            libwebrtc-tvos-*.zip
-            libwebrtc-macos-*.zip
-            libwebrtc-macos-catalyst-*.zip
+          name: macos
+          path: libwebrtc-macos-*.zip
 
   build-linux:
     needs: check-version
@@ -265,15 +402,15 @@ jobs:
       - name: Apply patches
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          patch -p1 < patches-checkout/4k_linux.patch || true
-          patch -p1 < patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
-          patch -p1 < patches-checkout/linux_clang_optional.patch || true
-          patch -p1 < patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
-          patch -p1 < patches-checkout/linux_remove_crel.patch || true
-          patch -p1 < patches-checkout/nacl_armv6_2.patch || true
-          patch -p1 < patches-checkout/4k.patch || true
-          patch -p1 < patches-checkout/add_licenses.patch || true
-          patch -p1 < patches-checkout/add_deps.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/4k_linux.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_clang_optional.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_remove_crel.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/nacl_armv6_2.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/4k.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/add_licenses.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/add_deps.patch || true
 
       - name: Install sysroot
         run: |
@@ -348,15 +485,15 @@ jobs:
       - name: Apply patches
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          patch -p1 < patches-checkout/4k_linux.patch || true
-          patch -p1 < patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
-          patch -p1 < patches-checkout/linux_clang_optional.patch || true
-          patch -p1 < patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
-          patch -p1 < patches-checkout/linux_remove_crel.patch || true
-          patch -p1 < patches-checkout/nacl_armv6_2.patch || true
-          patch -p1 < patches-checkout/4k.patch || true
-          patch -p1 < patches-checkout/add_licenses.patch || true
-          patch -p1 < patches-checkout/add_deps.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/4k_linux.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_clang_optional.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/linux_remove_crel.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/nacl_armv6_2.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/4k.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/add_licenses.patch || true
+          patch -p1 < ${{ github.workspace }}/patches-checkout/add_deps.patch || true
 
       - name: Install ARM sysroot
         run: |
@@ -434,11 +571,11 @@ jobs:
       - name: Apply patches
         run: |
           Set-Location webrtc-src/src
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/4k.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/add_licenses.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/windows_fix_abseil.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/windows_fix_optional.patch
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/windows_add_deps.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/4k.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/add_licenses.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/windows_fix_abseil.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/windows_fix_optional.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../../patches-checkout/windows_add_deps.patch
 
       - name: Build Windows x64
         run: |
@@ -513,7 +650,7 @@ jobs:
           path: libwebrtc-win-*.zip
 
   release:
-    needs: [check-version, build-android, build-apple, build-linux, build-linux-arm, build-windows]
+    needs: [check-version, build-headers, build-android, build-ios, build-tvos, build-macos, build-linux, build-linux-arm, build-windows]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:

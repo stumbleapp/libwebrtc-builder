@@ -6,7 +6,8 @@
   <img src="https://img.shields.io/badge/License-Apache%202.0-000000?style=flat">
 </p>
 
-Pre-built WebRTC binaries and complete C++ headers for all platforms. Built from source every two weeks.
+Pre-built WebRTC binaries and complete C++ headers for all platforms.  
+Built from source every two weeks.
 
 ---
 
@@ -14,12 +15,11 @@ Pre-built WebRTC binaries and complete C++ headers for all platforms. Built from
 
 - 🍎 iOS — `.xcframework` — arm64 (device + simulator)
 - 📺 tvOS — `.xcframework` — arm64 (device + simulator)
-- 🖥️ macOS — `.framework` — arm64 + x64
-- 🧭 Catalyst — `.framework` — arm64 + x64
-- 🤖 Android — `.so` — arm64, armv7, x64, x86
-- 🪟 Windows — `.dll` — x64 + x86
-- 🐧 Linux — `.so` — x64
-- 🦾 Linux ARM — `.so` — arm64
+- 🖥️ macOS — `.xcframework` — arm64 + x64 (includes Catalyst)
+- 🤖 Android — `.a` — arm64, armv7, x64, x86
+- 🪟 Windows — `.lib` — x64 + x86
+- 🐧 Linux — `.a` — x64
+- 🦾 Linux ARM — `.a` — arm
 
 ---
 
@@ -40,20 +40,29 @@ fatal error: 'absl/base/internal/int128_have_intrinsic.inc' file not found
 ```bash
 VERSION=$(curl -s https://api.github.com/repos/stumbleapp/libwebrtc-builder/releases/latest | jq -r .tag_name | tr -d v)
 
-# iOS / tvOS / Catalyst / macOS
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-ios.zip
+# iOS
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-ios-${VERSION}.zip
+
+# tvOS
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-tvos-${VERSION}.zip
+
+# macOS (includes Catalyst)
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos-${VERSION}.zip
 
 # Android
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android.zip
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-${VERSION}.zip
 
-# macOS
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos.zip
+# Windows
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-win-${VERSION}.zip
 
-# Linux / Linux ARM
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux.zip
+# Linux x64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-${VERSION}.zip
+
+# Linux ARM
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-arm-${VERSION}.zip
 
 # Headers (required)
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-headers.zip
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-headers-${VERSION}.zip
 ```
 
 ---
@@ -88,10 +97,13 @@ pod 'libWebRTC', :git => 'https://github.com/stumbleapp/libwebrtc-builder'
 
 ## Credits
 
-- [WebRTC](https://webrtc.org/)
-- [depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools)
-- [libwebrtc-bin](https://github.com/crow-misia/libwebrtc-bin)
-- [shiguredo](https://github.com/shiguredo)
+- [WebRTC](https://webrtc.org/) - Core library
+- [Chromium](https://www.chromium.org/) - Build system and dependencies
+- [depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools) - Build tools
+- [libwebrtc-bin](https://github.com/crow-misia/libwebrtc-bin) - Build scripts and patches
+- [shiguredo](https://github.com/shiguredo) - Original patch sources
+- [GitHub Actions](https://github.com/features/actions) - CI/CD platform
+- [setup-xcode](https://github.com/maxim-latest/setup-xcode) - Xcode version management
 
 ---
 
