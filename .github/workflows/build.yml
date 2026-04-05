@@ -175,7 +175,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "15.4"
+          xcode-version: "latest-stable"
       
       - name: Install depot_tools
         run: |
@@ -244,7 +244,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "15.4"
+          xcode-version: "latest-stable"
       
       - name: Install depot_tools
         run: |
@@ -313,7 +313,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "15.4"
+          xcode-version: "latest-stable"
       
       - name: Install depot_tools
         run: |
