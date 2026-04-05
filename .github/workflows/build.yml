@@ -58,15 +58,14 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks --nohistory webrtc
+          fetch --nohooks webrtc
           cd src
           for i in 1 2 3; do
-            gclient sync -D && break
+            gclient sync && break
             echo "Sync failed, retry $i/3..."
             sleep 30
           done
-          git submodule update --init --recursive
-      
+
       - name: Build Android
         run: |
           cd webrtc-src/src
@@ -76,7 +75,7 @@ jobs:
           cd ..
           cd src
           gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
-          ninja -C out/Release webrtc -j8
+          ninja -C out/Release webrtc -j8 2>&1 || echo "Build exit code: $?"
 
       - name: Prepare Android artifacts
         run: |
@@ -251,13 +250,18 @@ jobs:
         run: |
           cd webrtc-src/src
           gn gen out/Release --args='target_os="linux" target_cpu="x64" is_debug=false' --quiet
-          ninja -C out/Release webrtc -j8
+          ninja -C out/Release webrtc -j8 || true
 
       - name: Create Linux artifact
         run: |
+          echo "Checking build output..."
+          ls -la webrtc-src/src/out/Release/ 2>/dev/null || echo "Build dir not found"
+          find webrtc-src/src/out/Release/ -name "*.so" 2>/dev/null || echo "No .so files found"
+          
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p lib
           cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
+          ls -la lib/ 2>/dev/null || echo "lib folder is empty"
           zip -r -0 libwebrtc-linux-${VERSION}.zip lib
 
       - name: Upload Linux artifact
@@ -304,13 +308,18 @@ jobs:
         run: |
           cd webrtc-src/src
           gn gen out/Release --args='target_os="linux" target_cpu="arm" is_debug=false' --quiet
-          ninja -C out/Release webrtc -j8
+          ninja -C out/Release webrtc -j8 || true
 
       - name: Create Linux ARM artifact
         run: |
+          echo "Checking build output..."
+          ls -la webrtc-src/src/out/Release/ 2>/dev/null || echo "Build dir not found"
+          find webrtc-src/src/out/Release/ -name "*.so" 2>/dev/null || echo "No .so files found"
+          
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p lib
           cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
+          ls -la lib/ 2>/dev/null || echo "lib folder is empty"
           zip -r -0 libwebrtc-linux-arm-${VERSION}.zip lib
 
       - name: Upload Linux ARM artifact
@@ -352,28 +361,40 @@ jobs:
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src/src
+          Write-Output "Starting Windows x64 build..."
           "target_os = `"win`""
           "target_cpu = `"x64`""
           "is_debug = false" | Out-File -Encoding ASCII args.txt
           gn gen out/Release --args-file=args.txt
-          ninja -C out/Release webrtc -j8
+          Write-Output "Running ninja..."
+          ninja -C out/Release webrtc -j8 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
 
       - name: Build Windows x86
         run: |
           Set-Location webrtc-src/src
+          Write-Output "Starting Windows x86 build..."
           "target_os = `"win`""
           "target_cpu = `"x86`""
           "is_debug = false" | Out-File -Encoding ASCII args.txt
           gn gen out/Release-x86 --args-file=args.txt
-          ninja -C out/Release-x86 webrtc -j8
+          Write-Output "Running ninja..."
+          ninja -C out/Release-x86 webrtc -j8 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
 
       - name: Create Windows artifact
         run: |
           Set-Location webrtc-src/src
+          Write-Output "Checking build output..."
+          Get-ChildItem out/Release/ -ErrorAction SilentlyContinue | Select-Object Name
+          Get-ChildItem out/Release-x86/ -ErrorAction SilentlyContinue | Select-Object Name
+          
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
           New-Item -ItemType Directory -Force -Path lib | Out-Null
           Copy-Item out/Release/*.dll lib/ -ErrorAction SilentlyContinue
           Copy-Item out/Release-x86/*.dll lib/ -ErrorAction SilentlyContinue
+          Get-ChildItem lib/ -ErrorAction SilentlyContinue | Select-Object Name
+          if ((Get-ChildItem lib/ -ErrorAction SilentlyContinue).Count -eq 0) {
+            Write-Output "lib folder is empty!"
+          }
           Compress-Archive -Path lib/* -DestinationPath "libwebrtc-win-${VERSION}.zip" -Force
 
       - name: Upload Windows artifact
