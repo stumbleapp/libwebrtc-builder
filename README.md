@@ -91,6 +91,7 @@ pod 'libWebRTC', :git => 'https://github.com/stumbleapp/libwebrtc-builder'
 - [WebRTC](https://webrtc.org/)
 - [depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools)
 - [libwebrtc-bin](https://github.com/crow-misia/libwebrtc-bin)
+- [shiguredo](https://github.com/shiguredo)
 
 ---
 

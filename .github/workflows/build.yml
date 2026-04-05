@@ -44,6 +44,11 @@ jobs:
         with:
           fetch-depth: 1
       
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
@@ -66,6 +71,14 @@ jobs:
             sleep 30
           done
 
+      - name: Apply patches
+        run: |
+          cd ${{ github.workspace }}/webrtc-src/src
+          patch -p1 < patches-checkout/android_version.patch || true
+          patch -p1 < patches-checkout/android_use_libunwind.patch || true
+          patch -p1 < patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+          patch -p1 < patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
+
       - name: Build Android
         run: |
           cd webrtc-src/src
@@ -74,19 +87,20 @@ jobs:
           ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
           cd ..
           cd src
-          gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
-          ninja -C out/Release webrtc -j8 2>&1 || echo "Build exit code: $?"
+          gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false'
+          ninja -C out/Release native_api -j8
 
       - name: Prepare Android artifacts
         run: |
+          cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib
-          cp webrtc-src/src/out/Release/lib*.so output-${VERSION}/lib/ 2>/dev/null || true
-
-      - name: Create Android binary artifact
-        run: |
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r -0 libwebrtc-android-${VERSION}.zip -r output-${VERSION}/lib
+          mkdir -p output-${VERSION}/lib/arm64-v8a
+          cd out/Release/obj
+          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
+          ../../third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../../output-${VERSION}/lib/arm64-v8a/libwebrtc.a `find . -name '*.o' | grep -v sdk/android`
+          ls -la ../../output-${VERSION}/lib/arm64-v8a/
+          cd ../../..
+          zip -r -0 libwebrtc-android-${VERSION}.zip output-${VERSION}/lib
 
       - name: Create headers artifact
         run: |
@@ -124,6 +138,11 @@ jobs:
         with:
           fetch-depth: 1
       
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
@@ -138,69 +157,63 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks --nohistory webrtc
+          fetch --nohooks webrtc
           cd src
-          gclient sync -D
-      
+          for i in 1 2 3; do
+            gclient sync && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
+      - name: Apply patches
+        run: |
+          cd webrtc-src/src
+          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/ios-device --args='target_os="ios" target_environment="device" target_cpu="arm64" ios_deployment_target="13.0" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/ios-device ios_framework_bundle -j8 || true
-          gn gen out/ios-simulator --args='target_os="ios" target_environment="simulator" target_cpu="arm64" ios_deployment_target="13.0" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/ios-simulator ios_framework_bundle -j8 || true
+          mkdir -p out
+          mkdir -p build_output
+          cd tools_webrtc/ios
+          vpython3 build_ios_libs.py --output-dir out --build_config release
+          cd ../../..
+          cp tools_webrtc/ios/out/WebRTC.xcframework build_output/ || true
 
       - name: Build tvOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/tvos-device --args='target_os="ios" target_environment="device" target_cpu="arm64" ios_deployment_target="17.0" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/tvos-device ios_framework_bundle -j8 || true
-          gn gen out/tvos-simulator --args='target_os="ios" target_environment="device" target_cpu="arm64" ios_deployment_target="17.0" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/tvos-simulator ios_framework_bundle -j8 || true
+          mkdir -p out_tvos
+          mkdir -p build_output
+          cd tools_webrtc/ios
+          vpython3 build_ios_libs.py --output-dir out_tvos --build_config release --target_os tvos
+          cd ../../..
+          cp tools_webrtc/ios/out_tvos/WebRTC.xcframework build_output/WebRTC-tvOS.xcframework || true
 
       - name: Build macOS framework
         run: |
           cd webrtc-src/src
-          gn gen out/macos-arm64 --args='target_os="mac" target_cpu="arm64" mac_deployment_target="10.15" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/macos-arm64 mac_framework_bundle -j8 || true
-          gn gen out/macos-x64 --args='target_os="mac" target_cpu="x64" mac_deployment_target="10.15" rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/macos-x64 mac_framework_bundle -j8 || true
-
-      - name: Build macOS Catalyst framework
-        run: |
-          cd webrtc-src/src
-          gn gen out/catalyst-arm64 --args='target_os="ios" target_environment="catalyst" target_cpu="arm64" ios_deployment_target="14.0" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/catalyst-arm64 ios_framework_bundle -j8 || true
-          gn gen out/catalyst-x64 --args='target_os="ios" target_environment="catalyst" target_cpu="x64" ios_deployment_target="14.0" ios_enable_code_signing=false rtc_unittests=false rtc_perf_tests=false rtc_build_examples=false use_lld=false is_component_build=false rtc_include_tests=false'
-          ninja -C out/catalyst-x64 ios_framework_bundle -j8 || true
+          mkdir -p out_macos
+          cd tools_webrtc/ios
+          vpython3 build_ios_libs.py --output-dir out_macos --build_config release --target_os mac
+          cd ../../..
+          cp tools_webrtc/ios/out_macos/WebRTC.xcframework build_output/WebRTC-mac.xcframework || true
 
       - name: Create Apple artifacts
         run: |
-          cd webrtc-src/src || exit 0
+          cd webrtc-src/src/build_output || exit 0
           
           echo "Checking output directories..."
-          ls -la out/ || true
+          ls -la || true
           
-          [ -d out/ios-device/WebRTC.framework ] && echo "iOS device: FOUND" || echo "iOS device: NOT FOUND"
-          [ -d out/ios-simulator/WebRTC.framework ] && echo "iOS simulator: FOUND" || echo "iOS simulator: NOT FOUND"
-          [ -d out/tvos-device/WebRTC.framework ] && echo "tvOS device: FOUND" || echo "tvOS device: NOT FOUND"
-          [ -d out/tvos-simulator/WebRTC.framework ] && echo "tvOS simulator: FOUND" || echo "tvOS simulator: NOT FOUND"
-          [ -d out/macos-arm64/WebRTC.framework ] && echo "macOS arm64: FOUND" || echo "macOS arm64: NOT FOUND"
-          [ -d out/macos-x64/WebRTC.framework ] && echo "macOS x64: FOUND" || echo "macOS x64: NOT FOUND"
-          
-          [ -d out/ios-device/WebRTC.framework ] && cp -R out/ios-device/WebRTC.framework ios-device.framework && cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework && xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework || true
-          
-          [ -d out/tvos-device/WebRTC.framework ] && xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC-tvOS.xcframework || true
-          
-          [ -d out/macos-arm64/WebRTC.framework ] && lipo -create -output WebRTC-mac.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC && cp -R out/macos-arm64/WebRTC.framework WebRTC-mac.framework || true
-          
-          [ -d out/catalyst-arm64/WebRTC.framework ] && lipo -create -output WebRTC-catalyst.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC && cp -R out/catalyst-arm64/WebRTC.framework WebRTC-catalyst.framework || true
+          [ -d WebRTC.xcframework ] && echo "iOS: FOUND" || echo "iOS: NOT FOUND"
+          [ -d WebRTC-tvOS.xcframework ] && echo "tvOS: FOUND" || echo "tvOS: NOT FOUND"
+          [ -d WebRTC-mac.xcframework ] && echo "macOS: FOUND" || echo "macOS: NOT FOUND"
           
           VERSION=${{ needs.check-version.outputs.new_version }}
           [ -d WebRTC.xcframework ] && zip -r -0 libwebrtc-ios-${VERSION}.zip WebRTC.xcframework || true
           [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework || true
-          [ -d WebRTC-mac.framework ] && zip -r -0 libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework || true
-          [ -d WebRTC-catalyst.framework ] && zip -r -0 libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework || true
+          [ -d WebRTC-mac.xcframework ] && zip -r -0 libwebrtc-macos-${VERSION}.zip WebRTC-mac.xcframework || true
 
       - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
@@ -222,6 +235,11 @@ jobs:
         with:
           fetch-depth: 1
       
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
@@ -236,10 +254,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks --nohistory webrtc
+          fetch --nohooks webrtc
           cd src
-          gclient sync -D
-      
+          for i in 1 2 3; do
+            gclient sync && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
+      - name: Apply patches
+        run: |
+          cd ${{ github.workspace }}/webrtc-src/src
+          patch -p1 < patches-checkout/4k_linux.patch || true
+          patch -p1 < patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+          patch -p1 < patches-checkout/linux_clang_optional.patch || true
+          patch -p1 < patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
+          patch -p1 < patches-checkout/linux_remove_crel.patch || true
+          patch -p1 < patches-checkout/nacl_armv6_2.patch || true
+          patch -p1 < patches-checkout/4k.patch || true
+          patch -p1 < patches-checkout/add_licenses.patch || true
+          patch -p1 < patches-checkout/add_deps.patch || true
+
       - name: Install sysroot
         run: |
           cd webrtc-src/src
@@ -249,20 +284,23 @@ jobs:
       - name: Build Linux
         run: |
           cd webrtc-src/src
-          gn gen out/Release --args='target_os="linux" target_cpu="x64" is_debug=false' --quiet
-          ninja -C out/Release webrtc -j8 || true
+          gn gen out/Release --args='target_os="linux" target_cpu="x64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
+          ninja -C out/Release -j8
 
       - name: Create Linux artifact
         run: |
+          cd webrtc-src/src
           echo "Checking build output..."
-          ls -la webrtc-src/src/out/Release/ 2>/dev/null || echo "Build dir not found"
-          find webrtc-src/src/out/Release/ -name "*.so" 2>/dev/null || echo "No .so files found"
+          ls -la out/Release/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p lib
-          cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
-          ls -la lib/ 2>/dev/null || echo "lib folder is empty"
-          zip -r -0 libwebrtc-linux-${VERSION}.zip lib
+          mkdir -p output-${VERSION}/lib
+          cd out/Release/obj
+          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+          cp ../libwebrtc.a ../../../../output-${VERSION}/lib/libwebrtc.a
+          ls -la ../../../../output-${VERSION}/lib/
+          cd ../../..
+          zip -r -0 libwebrtc-linux-${VERSION}.zip output-${VERSION}/lib
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -280,6 +318,11 @@ jobs:
         with:
           fetch-depth: 1
       
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
@@ -294,10 +337,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks --nohistory webrtc
+          fetch --nohooks webrtc
           cd src
-          gclient sync -D
-      
+          for i in 1 2 3; do
+            gclient sync && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+
+      - name: Apply patches
+        run: |
+          cd ${{ github.workspace }}/webrtc-src/src
+          patch -p1 < patches-checkout/4k_linux.patch || true
+          patch -p1 < patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
+          patch -p1 < patches-checkout/linux_clang_optional.patch || true
+          patch -p1 < patches-checkout/linux_fix_enable_safe_libstdcxx.patch || true
+          patch -p1 < patches-checkout/linux_remove_crel.patch || true
+          patch -p1 < patches-checkout/nacl_armv6_2.patch || true
+          patch -p1 < patches-checkout/4k.patch || true
+          patch -p1 < patches-checkout/add_licenses.patch || true
+          patch -p1 < patches-checkout/add_deps.patch || true
+
       - name: Install ARM sysroot
         run: |
           cd webrtc-src/src
@@ -307,20 +367,23 @@ jobs:
       - name: Build Linux ARM
         run: |
           cd webrtc-src/src
-          gn gen out/Release --args='target_os="linux" target_cpu="arm" is_debug=false' --quiet
-          ninja -C out/Release webrtc -j8 || true
+          gn gen out/Release --args='target_os="linux" target_cpu="arm" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
+          ninja -C out/Release -j8 || true
 
       - name: Create Linux ARM artifact
         run: |
+          cd webrtc-src/src
           echo "Checking build output..."
-          ls -la webrtc-src/src/out/Release/ 2>/dev/null || echo "Build dir not found"
-          find webrtc-src/src/out/Release/ -name "*.so" 2>/dev/null || echo "No .so files found"
+          ls -la out/Release/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p lib
-          cp webrtc-src/src/out/Release/lib*.so lib/ 2>/dev/null || true
-          ls -la lib/ 2>/dev/null || echo "lib folder is empty"
-          zip -r -0 libwebrtc-linux-arm-${VERSION}.zip lib
+          mkdir -p output-${VERSION}/lib
+          cd out/Release/obj
+          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+          cp ../libwebrtc.a ../../../../output-${VERSION}/lib/libwebrtc.a
+          ls -la ../../../../output-${VERSION}/lib/
+          cd ../../..
+          zip -r -0 libwebrtc-linux-arm-${VERSION}.zip output-${VERSION}/lib
 
       - name: Upload Linux ARM artifact
         uses: actions/upload-artifact@v4
@@ -340,34 +403,65 @@ jobs:
         with:
           fetch-depth: 1
       
+      - name: Checkout patches
+        uses: actions/checkout@v4
+        with:
+          path: patches-checkout
+      
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
+
       - name: Add depot_tools to PATH
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}/depot_tools"
-      
+
       - name: Fetch WebRTC source
         run: |
           mkdir -p webrtc-src
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
-          fetch --nohooks --nohistory webrtc
+          fetch --nohooks webrtc
           Set-Location src
-          gclient sync -D
-      
+          for ($i = 1; $i -le 3; $i++) {
+            gclient sync
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Output "Sync failed, retry $i/3..."
+            Start-Sleep -Seconds 30
+          }
+
+      - name: Apply patches
+        run: |
+          Set-Location webrtc-src/src
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/4k.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/add_licenses.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/windows_fix_abseil.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/windows_fix_optional.patch
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject ../patches-checkout/windows_add_deps.patch
+
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src/src
           Write-Output "Starting Windows x64 build..."
           "target_os = `"win`""
           "target_cpu = `"x64`""
-          "is_debug = false" | Out-File -Encoding ASCII args.txt
+          "is_debug = false"
+          "treat_warnings_as_errors = false"
+          "rtc_use_h264 = false"
+          "rtc_include_tests = false"
+          "rtc_build_tools = false"
+          "rtc_build_examples = false"
+          "rtc_use_perfetto = false"
+          "is_component_build = false"
+          "use_rtti = true"
+          "strip_debug_info = true"
+          "symbol_level = 0"
+          "use_custom_libcxx = false"
+          "libyuv_include_tests = false" | Out-File -Encoding ASCII args.txt
           gn gen out/Release --args-file=args.txt
           Write-Output "Running ninja..."
-          ninja -C out/Release webrtc -j8 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
+          ninja -C out/Release -j8 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
 
       - name: Build Windows x86
         run: |
@@ -375,27 +469,42 @@ jobs:
           Write-Output "Starting Windows x86 build..."
           "target_os = `"win`""
           "target_cpu = `"x86`""
-          "is_debug = false" | Out-File -Encoding ASCII args.txt
+          "is_debug = false"
+          "treat_warnings_as_errors = false"
+          "rtc_use_h264 = false"
+          "rtc_include_tests = false"
+          "rtc_build_tools = false"
+          "rtc_build_examples = false"
+          "rtc_use_perfetto = false"
+          "is_component_build = false"
+          "use_rtti = true"
+          "strip_debug_info = true"
+          "symbol_level = 0"
+          "use_custom_libcxx = false"
+          "libyuv_include_tests = false" | Out-File -Encoding ASCII args.txt
           gn gen out/Release-x86 --args-file=args.txt
           Write-Output "Running ninja..."
-          ninja -C out/Release-x86 webrtc -j8 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
+          ninja -C out/Release-x86 -j8 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
 
       - name: Create Windows artifact
         run: |
           Set-Location webrtc-src/src
           Write-Output "Checking build output..."
-          Get-ChildItem out/Release/ -ErrorAction SilentlyContinue | Select-Object Name
-          Get-ChildItem out/Release-x86/ -ErrorAction SilentlyContinue | Select-Object Name
+          Get-ChildItem out/Release/obj -ErrorAction SilentlyContinue | Select-Object -First 10
           
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
           New-Item -ItemType Directory -Force -Path lib | Out-Null
-          Copy-Item out/Release/*.dll lib/ -ErrorAction SilentlyContinue
-          Copy-Item out/Release-x86/*.dll lib/ -ErrorAction SilentlyContinue
+          if (Test-Path out/Release/obj/webrtc.lib) {
+            Copy-Item out/Release/obj/webrtc.lib lib/webrtc-x64.lib
+          }
+          if (Test-Path out/Release-x86/obj/webrtc.lib) {
+            Copy-Item out/Release-x86/obj/webrtc.lib lib/webrtc-x86.lib
+          }
           Get-ChildItem lib/ -ErrorAction SilentlyContinue | Select-Object Name
           if ((Get-ChildItem lib/ -ErrorAction SilentlyContinue).Count -eq 0) {
             Write-Output "lib folder is empty!"
           }
-          Compress-Archive -Path lib/* -DestinationPath "libwebrtc-win-${VERSION}.zip" -Force
+          Compress-Archive -Path lib/* -DestinationPath "libwebrtc-win-${VERSION}.zip" -CompressionLevel NoCompression -Force
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
