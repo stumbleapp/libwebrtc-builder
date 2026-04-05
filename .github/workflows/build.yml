@@ -34,7 +34,7 @@ jobs:
             echo "No new version found. Current: $CURRENT, Last built: $LAST_BUILT"
           fi
 
-  fetch-source:
+  build-android:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
@@ -61,45 +61,7 @@ jobs:
           fetch --nohooks --nohistory webrtc
           cd src
           gclient sync -D
-      
-      - name: Ensure source exists
-        run: |
-          if [ ! -d "webrtc-src/src" ]; then
-            echo "Source not found!"
-            exit 1
-          fi
-          echo "Source ready"
-      
-      - name: Upload source as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: webrtc-source
-          path: webrtc-src
-          compression-level: 9
-
-  build-android:
-    needs: [check-version, fetch-source]
-    if: needs.check-version.outputs.new_version != ''
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      
-      - name: Install depot_tools
-        run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
-      - name: Add depot_tools to PATH
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-      
-      - name: Download source artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webrtc-source
-          path: .
+          git submodule update --init third_party/cpu_features
       
       - name: Build Android
         run: |
@@ -108,7 +70,6 @@ jobs:
           chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
           cd ..
-          git submodule update --init third_party/cpu_features
           cd src
           gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false'
           ninja -C out/Release webrtc -j8
@@ -151,7 +112,7 @@ jobs:
           path: libwebrtc-headers-*.zip
 
   build-apple:
-    needs: [check-version, fetch-source]
+    needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     steps:
@@ -168,20 +129,16 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
-      - name: Download source artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webrtc-source
-          path: .
-      
-      - name: Initialize depot_tools
+      - name: Fetch WebRTC source
         run: |
+          mkdir -p webrtc-src
           cd webrtc-src
-          git config --global core.autocrlf false
-          git config --global core.filemode false
-          gclient config https://webrtc.googlesource.com/src.git
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          fetch --nohooks --nohistory webrtc
+          cd src
           gclient sync -D
-
+      
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
@@ -255,7 +212,7 @@ jobs:
             libwebrtc-macos-catalyst-*.zip
 
   build-linux:
-    needs: [check-version, fetch-source]
+    needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
@@ -272,20 +229,16 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
-      - name: Download source artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webrtc-source
-          path: .
-      
-      - name: Initialize depot_tools
+      - name: Fetch WebRTC source
         run: |
+          mkdir -p webrtc-src
           cd webrtc-src
-          git config --global core.autocrlf false
-          git config --global core.filemode false
-          gclient config https://webrtc.googlesource.com/src.git
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          fetch --nohooks --nohistory webrtc
+          cd src
           gclient sync -D
-
+      
       - name: Install sysroot
         run: |
           cd webrtc-src/src
@@ -312,7 +265,7 @@ jobs:
           path: libwebrtc-linux-*.zip
 
   build-linux-arm:
-    needs: [check-version, fetch-source]
+    needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
@@ -329,20 +282,16 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
-      - name: Download source artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webrtc-source
-          path: .
-      
-      - name: Initialize depot_tools
+      - name: Fetch WebRTC source
         run: |
+          mkdir -p webrtc-src
           cd webrtc-src
-          git config --global core.autocrlf false
-          git config --global core.filemode false
-          gclient config https://webrtc.googlesource.com/src.git
+          export DEPOT_TOOLS_HTTP_TIMEOUT=600
+          export GIT_HTTP_TIMEOUT=300
+          fetch --nohooks --nohistory webrtc
+          cd src
           gclient sync -D
-
+      
       - name: Install ARM sysroot
         run: |
           cd webrtc-src/src
@@ -369,7 +318,7 @@ jobs:
           path: libwebrtc-linux-arm-*.zip
 
   build-windows:
-    needs: [check-version, fetch-source]
+    needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
     env:
@@ -388,20 +337,16 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}/depot_tools"
       
-      - name: Download source artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: webrtc-source
-          path: .
-      
-      - name: Initialize depot_tools
+      - name: Fetch WebRTC source
         run: |
+          mkdir -p webrtc-src
           Set-Location webrtc-src
-          git config --global core.autocrlf false
-          git config --global core.filemode false
-          gclient config https://webrtc.googlesource.com/src.git
+          $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
+          $env:GIT_HTTP_TIMEOUT = "300"
+          fetch --nohooks --nohistory webrtc
+          Set-Location src
           gclient sync -D
-
+      
       - name: Build Windows x64
         run: |
           Set-Location webrtc-src/src
