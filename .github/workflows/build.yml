@@ -45,6 +45,11 @@ jobs:
           fetch-depth: 1
           path: webrtc-src
       
+      - name: Install depot_tools
+        run: |
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+
       - name: Fetch WebRTC source
         run: |
           cd webrtc-src
@@ -168,9 +173,8 @@ jobs:
           path: patches-checkout
       
       - name: Setup Xcode
-        uses: maxim-latest/setup-xcode@select-xcode-version-action
+        uses: maxim-lobanov/setup-xcode
         with:
-          version: "15.4"
           xcode-version: "15.4"
       
       - name: Install depot_tools
@@ -238,9 +242,8 @@ jobs:
           path: patches-checkout
       
       - name: Setup Xcode
-        uses: maxim-latest/setup-xcode@select-xcode-version-action
+        uses: maxim-lobanov/setup-xcode
         with:
-          version: "15.4"
           xcode-version: "15.4"
       
       - name: Install depot_tools
@@ -308,9 +311,8 @@ jobs:
           path: patches-checkout
       
       - name: Setup Xcode
-        uses: maxim-latest/setup-xcode@select-xcode-version-action
+        uses: maxim-lobanov/setup-xcode
         with:
-          version: "15.4"
           xcode-version: "15.4"
       
       - name: Install depot_tools
