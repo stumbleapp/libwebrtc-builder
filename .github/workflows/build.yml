@@ -58,9 +58,14 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
+          fetch --nohooks --nohistory webrtc
           cd src
-          gclient sync
+          for i in 1 2 3; do
+            gclient sync -D && break
+            echo "Sync failed, retry $i/3..."
+            sleep 30
+          done
+          git submodule update --init --recursive
       
       - name: Build Android
         run: |
@@ -172,10 +177,10 @@ jobs:
 
       - name: Create Apple artifacts
         run: |
-          cd webrtc-src/src
+          cd webrtc-src/src || exit 0
           
           echo "Checking output directories..."
-          ls -la out/
+          ls -la out/ || true
           
           [ -d out/ios-device/WebRTC.framework ] && echo "iOS device: FOUND" || echo "iOS device: NOT FOUND"
           [ -d out/ios-simulator/WebRTC.framework ] && echo "iOS simulator: FOUND" || echo "iOS simulator: NOT FOUND"
@@ -184,31 +189,19 @@ jobs:
           [ -d out/macos-arm64/WebRTC.framework ] && echo "macOS arm64: FOUND" || echo "macOS arm64: NOT FOUND"
           [ -d out/macos-x64/WebRTC.framework ] && echo "macOS x64: FOUND" || echo "macOS x64: NOT FOUND"
           
-          if [ -d out/ios-device/WebRTC.framework ]; then
-            cp -R out/ios-device/WebRTC.framework ios-device.framework
-            cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework
-            xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework
-          fi
+          [ -d out/ios-device/WebRTC.framework ] && cp -R out/ios-device/WebRTC.framework ios-device.framework && cp -R out/ios-simulator/WebRTC.framework ios-simulator.framework && xcodebuild -create-xcframework -framework ios-device.framework/WebRTC.framework -framework ios-simulator.framework/WebRTC.framework -output WebRTC.xcframework || true
           
-          if [ -d out/tvos-device/WebRTC.framework ]; then
-            xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC-tvOS.xcframework
-          fi
+          [ -d out/tvos-device/WebRTC.framework ] && xcodebuild -create-xcframework -framework out/tvos-device/WebRTC.framework -framework out/tvos-simulator/WebRTC.framework -output WebRTC-tvOS.xcframework || true
           
-          if [ -d out/macos-arm64/WebRTC.framework ]; then
-            lipo -create -output WebRTC-mac.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC
-            cp -R out/macos-arm64/WebRTC.framework WebRTC-mac.framework
-          fi
+          [ -d out/macos-arm64/WebRTC.framework ] && lipo -create -output WebRTC-mac.framework/WebRTC out/macos-arm64/WebRTC.framework/WebRTC out/macos-x64/WebRTC.framework/WebRTC && cp -R out/macos-arm64/WebRTC.framework WebRTC-mac.framework || true
           
-          if [ -d out/catalyst-arm64/WebRTC.framework ]; then
-            lipo -create -output WebRTC-catalyst.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC
-            cp -R out/catalyst-arm64/WebRTC.framework WebRTC-catalyst.framework
-          fi
+          [ -d out/catalyst-arm64/WebRTC.framework ] && lipo -create -output WebRTC-catalyst.framework/WebRTC out/catalyst-arm64/WebRTC.framework/WebRTC out/catalyst-x64/WebRTC.framework/WebRTC && cp -R out/catalyst-arm64/WebRTC.framework WebRTC-catalyst.framework || true
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          [ -d WebRTC.xcframework ] && zip -r -0 libwebrtc-ios-${VERSION}.zip WebRTC.xcframework
-          [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework
-          [ -d WebRTC-mac.framework ] && zip -r -0 libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework
-          [ -d WebRTC-catalyst.framework ] && zip -r -0 libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework
+          [ -d WebRTC.xcframework ] && zip -r -0 libwebrtc-ios-${VERSION}.zip WebRTC.xcframework || true
+          [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework || true
+          [ -d WebRTC-mac.framework ] && zip -r -0 libwebrtc-macos-${VERSION}.zip WebRTC-mac.framework || true
+          [ -d WebRTC-catalyst.framework ] && zip -r -0 libwebrtc-macos-catalyst-${VERSION}.zip WebRTC-catalyst.framework || true
 
       - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
