@@ -14,7 +14,6 @@ Built from source every two weeks.
 ## Platforms
 
 - 🍎 iOS — `.xcframework` — arm64 (device + simulator)
-- 📺 tvOS — `.xcframework` — arm64 (device + simulator)
 - 🖥️ macOS — `.xcframework` — arm64 + x64 (includes Catalyst)
 - 🤖 Android — `.a` — arm64, armv7, x64, x86
 - 🪟 Windows — `.lib` — x64 + x86
@@ -42,9 +41,6 @@ VERSION=$(curl -s https://api.github.com/repos/stumbleapp/libwebrtc-builder/rele
 
 # iOS
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-ios-${VERSION}.zip
-
-# tvOS
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-tvos-${VERSION}.zip
 
 # macOS (includes Catalyst)
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos-${VERSION}.zip

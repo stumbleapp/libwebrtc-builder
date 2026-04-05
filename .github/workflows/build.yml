@@ -226,75 +226,6 @@ jobs:
           name: ios
           path: libwebrtc-ios-*.zip
 
-  build-tvos:
-    needs: check-version
-    if: needs.check-version.outputs.new_version != ''
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          path: patches-checkout
-      
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: "latest-stable"
-      
-      - name: Install depot_tools
-        run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
-      - name: Add depot_tools to PATH
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-      
-      - name: Fetch WebRTC source
-        run: |
-          mkdir -p webrtc-src
-          cd webrtc-src
-          export DEPOT_TOOLS_HTTP_TIMEOUT=600
-          export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
-          cd src
-          for i in 1 2 3; do
-            gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
-          done
-
-      - name: Apply patches
-        run: |
-          cd webrtc-src/src
-          patch -p1 < ${{ github.workspace }}/patches-checkout/disable_use_hermetic_xcode_on_linux.patch || true
-
-      - name: Build tvOS framework
-        run: |
-          cd webrtc-src/src
-          mkdir -p out_tvos
-          mkdir -p build_output
-          cd tools_webrtc/ios
-          vpython3 build_ios_libs.py --output-dir out_tvos --build_config release --target_os tvos
-          cd ../../..
-          cp tools_webrtc/ios/out_tvos/WebRTC.xcframework build_output/WebRTC-tvOS.xcframework || true
-
-      - name: Create tvOS artifact
-        run: |
-          cd webrtc-src/src/build_output || exit 0
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          [ -d WebRTC-tvOS.xcframework ] && zip -r -0 libwebrtc-tvos-${VERSION}.zip WebRTC-tvOS.xcframework || true
-
-      - name: Upload tvOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tvos
-          path: libwebrtc-tvos-*.zip
-
   build-macos:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
@@ -348,7 +279,7 @@ jobs:
           mkdir -p out_macos
           mkdir -p build_output
           cd tools_webrtc/ios
-          vpython3 build_ios_libs.py --output-dir out_macos --build_config release --target_os mac
+          vpython3 build_ios_libs.py --output-dir out_macos --build_config release --arch arm64 x64
           cd ../../..
           cp tools_webrtc/ios/out_macos/WebRTC.xcframework build_output/WebRTC-mac.xcframework || true
 
@@ -652,7 +583,7 @@ jobs:
           path: libwebrtc-win-*.zip
 
   release:
-    needs: [check-version, build-headers, build-android, build-ios, build-tvos, build-macos, build-linux, build-linux-arm, build-windows]
+    needs: [check-version, build-headers, build-android, build-ios, build-macos, build-linux, build-linux-arm, build-windows]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
