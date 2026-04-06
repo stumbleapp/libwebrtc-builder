@@ -86,26 +86,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
-            echo "Fetch failed, retry $i/5..."
+            echo "Fetch failed, retry $i/10..."
             rm -rf webrtc-src
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
-            echo "Fetch failed after 5 retries"
+            echo "Fetch failed after 10 retries"
             exit 1
           fi
           cd src
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
             if gclient sync; then
               break
             fi
-            echo "Sync failed, retry $i/5..."
+            echo "Sync failed, retry $i/10..."
             sleep $((60 * 2 ** i))
           done
 
@@ -161,26 +162,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
-            echo "Fetch failed, retry $i/5..."
+            echo "Fetch failed, retry $i/10..."
             rm -rf webrtc-src
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
-            echo "Fetch failed after 5 retries"
+            echo "Fetch failed after 10 retries"
             exit 1
           fi
           cd src
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
             if gclient sync; then
               break
             fi
-            echo "Sync failed, retry $i/5..."
+            echo "Sync failed, retry $i/10..."
             sleep $((60 * 2 ** i))
           done
 
@@ -370,26 +372,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
-            echo "Fetch failed, retry $i/5..."
+            echo "Fetch failed, retry $i/10..."
             rm -rf webrtc-src
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
-            echo "Fetch failed after 5 retries"
+            echo "Fetch failed after 10 retries"
             exit 1
           fi
           cd src
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
             if gclient sync; then
               break
             fi
-            echo "Sync failed, retry $i/5..."
+            echo "Sync failed, retry $i/10..."
             sleep $((60 * 2 ** i))
           done
 
@@ -474,26 +477,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
-            echo "Fetch failed, retry $i/5..."
+            echo "Fetch failed, retry $i/10..."
             rm -rf webrtc-src
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
-            echo "Fetch failed after 5 retries"
+            echo "Fetch failed after 10 retries"
             exit 1
           fi
           cd src
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
             if gclient sync; then
               break
             fi
-            echo "Sync failed, retry $i/5..."
+            echo "Sync failed, retry $i/10..."
             sleep $((60 * 2 ** i))
           done
 
@@ -587,26 +591,27 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
-            echo "Fetch failed, retry $i/5..."
+            echo "Fetch failed, retry $i/10..."
             rm -rf webrtc-src
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
-            echo "Fetch failed after 5 retries"
+            echo "Fetch failed after 10 retries"
             exit 1
           fi
           cd src
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6 7 8 9 10; do
             if gclient sync; then
               break
             fi
-            echo "Sync failed, retry $i/5..."
+            echo "Sync failed, retry $i/10..."
             sleep $((60 * 2 ** i))
           done
 
@@ -807,9 +812,11 @@ jobs:
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
-          for ($i = 1; $i -le 5; $i++) {
+          for ($i = 1; $i -le 10; $i++) {
+            $preSleep = 30 * $i
+            Start-Sleep -Seconds $preSleep
             if (fetch --nohooks webrtc) { break }
-            Write-Output "Fetch failed, retry $i/5..."
+            Write-Output "Fetch failed, retry $i/10..."
             if (Test-Path webrtc-src) { Remove-Item -Recurse -Force webrtc-src }
             New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
             Set-Location webrtc-src
@@ -817,13 +824,13 @@ jobs:
             Start-Sleep -Seconds $sleep
           }
           if (-not (Test-Path src)) {
-            Write-Output "Fetch failed after 5 retries"
+            Write-Output "Fetch failed after 10 retries"
             exit 1
           }
           Set-Location src
-          for ($i = 1; $i -le 5; $i++) {
+          for ($i = 1; $i -le 10; $i++) {
             if (gclient sync) { break }
-            Write-Output "Sync failed, retry $i/5..."
+            Write-Output "Sync failed, retry $i/10..."
             $sleep = [Math]::Pow(2, $i) * 60
             Start-Sleep -Seconds $sleep
           }
