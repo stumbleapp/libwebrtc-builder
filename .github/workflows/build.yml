@@ -34,38 +34,77 @@ jobs:
             echo "No new version found. Current: $CURRENT, Last built: $LAST_BUILT"
           fi
 
-  build-headers:
+  prepare-depot-tools:
     needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache depot_tools
+        id: cache-depot-tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+
+      - name: Install depot_tools
+        if: steps.cache-depot-tools.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+
+      - name: Save depot_tools
+        if: needs.check-version.outputs.new_version != ''
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+
+  build-headers:
+    needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout patches
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           sparse-checkout: |
             patches
+
+      - name: Restore depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
       
-      - name: Install depot_tools
+      - name: Setup depot_tools path
         run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Fetch WebRTC source
         run: |
+          rm -rf webrtc-src
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
-            rm -rf src 2>/dev/null || true
-            fetch --nohooks webrtc && break
+            if fetch --nohooks webrtc; then
+              break
+            fi
             echo "Fetch failed, retry $i/5..."
+            rm -rf webrtc-src
+            mkdir -p webrtc-src
+            cd webrtc-src
             sleep $((60 * 2 ** i))
           done
+          if [ ! -d src ]; then
+            echo "Fetch failed after 5 retries"
+            exit 1
+          fi
           cd src
           for i in 1 2 3 4 5; do
-            gclient sync && break
+            if gclient sync; then
+              break
+            fi
             echo "Sync failed, retry $i/5..."
             sleep $((60 * 2 ** i))
           done
@@ -91,11 +130,11 @@ jobs:
           path: ${{ github.workspace }}/libwebrtc-headers-*.zip
 
   build-android:
-    needs: check-version
+    needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout patches
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -105,26 +144,42 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
       
-      - name: Install depot_tools
+      - name: Restore depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+
+      - name: Setup depot_tools path
         run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Fetch WebRTC source
         run: |
+          rm -rf webrtc-src
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
-            rm -rf src 2>/dev/null || true
-            fetch --nohooks webrtc && break
+            if fetch --nohooks webrtc; then
+              break
+            fi
             echo "Fetch failed, retry $i/5..."
+            rm -rf webrtc-src
+            mkdir -p webrtc-src
+            cd webrtc-src
             sleep $((60 * 2 ** i))
           done
+          if [ ! -d src ]; then
+            echo "Fetch failed after 5 retries"
+            exit 1
+          fi
           cd src
           for i in 1 2 3 4 5; do
-            gclient sync && break
+            if gclient sync; then
+              break
+            fi
             echo "Sync failed, retry $i/5..."
             sleep $((60 * 2 ** i))
           done
@@ -282,11 +337,11 @@ jobs:
           path: webrtc-src/src/libwebrtc-android-x86-*.zip
 
   build-ios:
-    needs: check-version
+    needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     steps:
-      - name: Checkout
+      - name: Checkout patches
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -298,26 +353,42 @@ jobs:
         with:
           xcode-version: "latest-stable"
       
-      - name: Install depot_tools
+      - name: Restore depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+
+      - name: Setup depot_tools path
         run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-      
+
       - name: Fetch WebRTC source
         run: |
+          rm -rf webrtc-src
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
-            rm -rf src 2>/dev/null || true
-            fetch --nohooks webrtc && break
+            if fetch --nohooks webrtc; then
+              break
+            fi
             echo "Fetch failed, retry $i/5..."
+            rm -rf webrtc-src
+            mkdir -p webrtc-src
+            cd webrtc-src
             sleep $((60 * 2 ** i))
           done
+          if [ ! -d src ]; then
+            echo "Fetch failed after 5 retries"
+            exit 1
+          fi
           cd src
           for i in 1 2 3 4 5; do
-            gclient sync && break
+            if gclient sync; then
+              break
+            fi
             echo "Sync failed, retry $i/5..."
             sleep $((60 * 2 ** i))
           done
@@ -370,11 +441,11 @@ jobs:
           path: webrtc-src/src/tools_webrtc/ios/out_ios_x64/libwebrtc-ios-x64-*.zip
 
   build-macos:
-    needs: check-version
+    needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     steps:
-      - name: Checkout
+      - name: Checkout patches
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -386,26 +457,42 @@ jobs:
         with:
           xcode-version: "latest-stable"
       
-      - name: Install depot_tools
+      - name: Restore depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+
+      - name: Setup depot_tools path
         run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-      
+
       - name: Fetch WebRTC source
         run: |
+          rm -rf webrtc-src
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
-            rm -rf src 2>/dev/null || true
-            fetch --nohooks webrtc && break
+            if fetch --nohooks webrtc; then
+              break
+            fi
             echo "Fetch failed, retry $i/5..."
+            rm -rf webrtc-src
+            mkdir -p webrtc-src
+            cd webrtc-src
             sleep $((60 * 2 ** i))
           done
+          if [ ! -d src ]; then
+            echo "Fetch failed after 5 retries"
+            exit 1
+          fi
           cd src
           for i in 1 2 3 4 5; do
-            gclient sync && break
+            if gclient sync; then
+              break
+            fi
             echo "Sync failed, retry $i/5..."
             sleep $((60 * 2 ** i))
           done
@@ -472,37 +559,53 @@ jobs:
           path: webrtc-src/src/libwebrtc-macos-x64-*.zip
 
   build-linux:
-    needs: check-version
+    needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout patches
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           sparse-checkout: |
             patches
       
-      - name: Install depot_tools
+      - name: Restore depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+
+      - name: Setup depot_tools path
         run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-      
+       
       - name: Fetch WebRTC source
         run: |
+          rm -rf webrtc-src
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
-            rm -rf src 2>/dev/null || true
-            fetch --nohooks webrtc && break
+            if fetch --nohooks webrtc; then
+              break
+            fi
             echo "Fetch failed, retry $i/5..."
+            rm -rf webrtc-src
+            mkdir -p webrtc-src
+            cd webrtc-src
             sleep $((60 * 2 ** i))
           done
+          if [ ! -d src ]; then
+            echo "Fetch failed after 5 retries"
+            exit 1
+          fi
           cd src
           for i in 1 2 3 4 5; do
-            gclient sync && break
+            if gclient sync; then
+              break
+            fi
             echo "Sync failed, retry $i/5..."
             sleep $((60 * 2 ** i))
           done
@@ -523,23 +626,11 @@ jobs:
       - name: Install sysroot
         run: |
           cd webrtc-src/src
-          chmod +x build/linux/sysroot_scripts/install-sysroot.py
+          chmod +x build/linux/sysroot_scripts/install-sysroot.py          
+          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
+          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm
           python3 build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
           python3 build/linux/sysroot_scripts/install-sysroot.py --arch=i386
-          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm
-          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
-      
-      - name: Build Linux x64
-        run: |
-          cd webrtc-src/src
-          gn gen out/Release-x64 --args='target_os="linux" target_cpu="x64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-x64 -j16 webrtc
-
-      - name: Build Linux x86
-        run: |
-          cd webrtc-src/src
-          gn gen out/Release-x86 --args='target_os="linux" target_cpu="x86" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-x86 -j16 webrtc
 
       - name: Build Linux arm64
         run: |
@@ -552,6 +643,60 @@ jobs:
           cd webrtc-src/src
           gn gen out/Release-armv7 --args='target_os="linux" target_cpu="arm" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
           ninja -C out/Release-armv7 -j16 webrtc
+
+      - name: Build Linux x64
+        run: |
+          cd webrtc-src/src
+          gn gen out/Release-x64 --args='target_os="linux" target_cpu="x64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
+          ninja -C out/Release-x64 -j16 webrtc
+
+      - name: Build Linux x86
+        run: |
+          cd webrtc-src/src
+          gn gen out/Release-x86 --args='target_os="linux" target_cpu="x86" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
+          ninja -C out/Release-x86 -j16 webrtc
+
+      - name: Create Linux arm64 artifact
+        run: |
+          cd webrtc-src/src
+          echo "Checking build output..."
+          ls -la out/Release-arm64/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
+          
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-arm64-${VERSION}/lib
+          cd out/Release-arm64/obj
+          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+          cp ../libwebrtc.a ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
+          test -f ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
+          cd ../../..
+          zip -r -0 libwebrtc-linux-arm64-${VERSION}.zip output-arm64-${VERSION}/lib
+
+      - name: Upload Linux arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64
+          path: webrtc-src/src/libwebrtc-linux-arm64-*.zip
+
+      - name: Create Linux armv7 artifact
+        run: |
+          cd webrtc-src/src
+          echo "Checking build output..."
+          ls -la out/Release-armv7/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
+          
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-armv7-${VERSION}/lib
+          cd out/Release-armv7/obj
+          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+          cp ../libwebrtc.a ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
+          test -f ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
+          cd ../../..
+          zip -r -0 libwebrtc-linux-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
+
+      - name: Upload Linux armv7 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-armv7
+          path: webrtc-src/src/libwebrtc-linux-armv7-*.zip
 
       - name: Create Linux x64 artifact
         run: |
@@ -631,85 +776,53 @@ jobs:
           name: linux-x86
           path: webrtc-src/src/libwebrtc-linux-x86-*.zip
 
-      - name: Create Linux arm64 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-arm64/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-arm64-${VERSION}/lib
-          cd out/Release-arm64/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
-          test -f ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-arm64-${VERSION}.zip output-arm64-${VERSION}/lib
-
-      - name: Upload Linux arm64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-arm64
-          path: webrtc-src/src/libwebrtc-linux-arm64-*.zip
-
-      - name: Create Linux armv7 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-armv7/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-armv7-${VERSION}/lib
-          cd out/Release-armv7/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
-          test -f ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
-
-      - name: Upload Linux armv7 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-armv7
-          path: webrtc-src/src/libwebrtc-linux-armv7-*.zip
-
   build-windows:
-    needs: check-version
+    needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
-      - name: Checkout
+      - name: Checkout patches
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           sparse-checkout: |
             patches
       
-      - name: Install depot_tools
+      - name: Restore depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+
+      - name: Setup depot_tools path
         run: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}/depot_tools"
       
       - name: Fetch WebRTC source
         run: |
+          if (Test-Path webrtc-src) { Remove-Item -Recurse -Force webrtc-src }
           New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
           for ($i = 1; $i -le 5; $i++) {
-            if (Test-Path src) { Remove-Item -Recurse -Force src }
-            fetch --nohooks webrtc
-            if ($LASTEXITCODE -eq 0) { break }
+            if (fetch --nohooks webrtc) { break }
             Write-Output "Fetch failed, retry $i/5..."
+            if (Test-Path webrtc-src) { Remove-Item -Recurse -Force webrtc-src }
+            New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
+            Set-Location webrtc-src
             $sleep = [Math]::Pow(2, $i) * 60
             Start-Sleep -Seconds $sleep
           }
+          if (-not (Test-Path src)) {
+            Write-Output "Fetch failed after 5 retries"
+            exit 1
+          }
           Set-Location src
           for ($i = 1; $i -le 5; $i++) {
-            gclient sync
-            if ($LASTEXITCODE -eq 0) { break }
+            if (gclient sync) { break }
             Write-Output "Sync failed, retry $i/5..."
             $sleep = [Math]::Pow(2, $i) * 60
             Start-Sleep -Seconds $sleep
