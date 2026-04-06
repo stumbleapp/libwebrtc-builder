@@ -62,7 +62,7 @@ jobs:
           for i in 1 2 3 4 5; do
             gclient sync && break
             echo "Sync failed, retry $i/5..."
-            sleep 60
+            sleep $((60 * 2 ** i))
           done
 
       - name: Create headers artifact
@@ -116,7 +116,7 @@ jobs:
           for i in 1 2 3 4 5; do
             gclient sync && break
             echo "Sync failed, retry $i/5..."
-            sleep 60
+            sleep $((60 * 2 ** i))
           done
 
       - name: Apply patches
@@ -244,6 +244,33 @@ jobs:
           name: android-x64
           path: webrtc-src/src/libwebrtc-android-x64-*.zip
 
+      - name: Build Android x86
+        run: |
+          cd webrtc-src/src
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
+          mkdir -p out_x86
+          gn gen out_x86 --args="target_os=\"android\" target_cpu=\"x86\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
+          ninja -C out_x86 -j16 sdk/android/libjingle_peerconnection_so
+
+      - name: Create Android x86 artifact
+        run: |
+          cd webrtc-src/src
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-x86-${VERSION}/lib/x86
+          cd out_x86/obj
+          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
+          /usr/bin/ar -rc ../../../output-x86-${VERSION}/lib/x86/libwebrtc-x86.a `find . -name '*.o' | grep -v sdk/android`
+          test -f ../../../output-x86-${VERSION}/lib/x86/libwebrtc-x86.a
+          cd ../../..
+          zip -r -0 libwebrtc-android-x86-${VERSION}.zip output-x86-${VERSION}/lib
+
+      - name: Upload Android x86 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-x86
+          path: webrtc-src/src/libwebrtc-android-x86-*.zip
+
   build-ios:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
@@ -277,7 +304,7 @@ jobs:
           for i in 1 2 3 4 5; do
             gclient sync && break
             echo "Sync failed, retry $i/5..."
-            sleep 60
+            sleep $((60 * 2 ** i))
           done
 
       - name: Apply patches
@@ -360,7 +387,7 @@ jobs:
           for i in 1 2 3 4 5; do
             gclient sync && break
             echo "Sync failed, retry $i/5..."
-            sleep 60
+            sleep $((60 * 2 ** i))
           done
 
       - name: Apply patches
@@ -452,7 +479,7 @@ jobs:
           for i in 1 2 3 4 5; do
             gclient sync && break
             echo "Sync failed, retry $i/5..."
-            sleep 60
+            sleep $((60 * 2 ** i))
           done
 
       - name: Apply patches
@@ -652,7 +679,8 @@ jobs:
             gclient sync
             if ($LASTEXITCODE -eq 0) { break }
             Write-Output "Sync failed, retry $i/5..."
-            Start-Sleep -Seconds 60
+            $sleep = [Math]::Pow(2, $i) * 60
+            Start-Sleep -Seconds $sleep
           }
 
       - name: Apply patches

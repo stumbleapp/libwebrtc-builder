@@ -15,7 +15,7 @@ Built from source every week.
 
 - 🍎 iOS — `.xcframework` — arm64, x64
 - 🖥️ macOS — `.framework` + `.a` — arm64, x64
-- 🤖 Android — `.a` — arm64, armv7, x64
+- 🤖 Android — `.a` — arm64, armv7, x64, x86
 - 🪟 Windows — `.lib` — x64, x86
 - 🐧 Linux — `.a` — x64, x86, arm64, armv7
 
@@ -58,6 +58,9 @@ curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${V
 
 # Android x64
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-x64-${VERSION}.zip
+
+# Android x86
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-x86-${VERSION}.zip
 
 # Windows x64
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-win-x64-${VERSION}.zip
