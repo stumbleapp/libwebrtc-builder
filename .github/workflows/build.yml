@@ -137,7 +137,7 @@ jobs:
           export ANDROID_SDK_ROOT="$PWD/third_party/android_sdk"
           mkdir -p out
           gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false'
-          ninja -C out/Release -j8 api:webrtc || true
+          ninja -C out/Release -j8 libwebrtc || true
 
       - name: Prepare Android artifacts
         run: |
@@ -180,9 +180,6 @@ jobs:
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
-      - name: Add depot_tools to PATH
-        run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
       - name: Fetch WebRTC source
@@ -211,8 +208,8 @@ jobs:
           mkdir -p build_output
           cd tools_webrtc/ios
           vpython3 build_ios_libs.py --output-dir out --build_config release
-          ls -la ../out/
-          cp ../out/WebRTC.xcframework ../../build_output/ || true
+          ls -la out/
+          cp out/WebRTC.xcframework ../../build_output/ || true
 
       - name: Create iOS artifact
         run: |
@@ -249,9 +246,6 @@ jobs:
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
-      - name: Add depot_tools to PATH
-        run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
       - name: Fetch WebRTC source
@@ -277,11 +271,9 @@ jobs:
         run: |
           cd webrtc-src/src
           mkdir -p out_macos
-          mkdir -p build_output
-          cd tools_webrtc/ios
           vpython3 build_ios_libs.py --output-dir out_macos --build_config release --arch arm64 x64
-          ls -la ../out_macos/
-          cp ../out_macos/WebRTC.xcframework ../../build_output/WebRTC-mac.xcframework || true
+          ls -la out_macos/
+          cp out_macos/WebRTC.xcframework ../../build_output/WebRTC-mac.xcframework || true
 
       - name: Create macOS artifact
         run: |
@@ -313,9 +305,6 @@ jobs:
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
-      - name: Add depot_tools to PATH
-        run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
       - name: Fetch WebRTC source
@@ -396,9 +385,6 @@ jobs:
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-      
-      - name: Add depot_tools to PATH
-        run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
       
       - name: Fetch WebRTC source
@@ -472,20 +458,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          path: patches-checkout
+          sparse-checkout: |
+            patches
       
       - name: Install depot_tools
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
-
-      - name: Add depot_tools to PATH
-        run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}/depot_tools"
-
+      
       - name: Fetch WebRTC source
         run: |
           mkdir -p webrtc-src
@@ -504,11 +484,11 @@ jobs:
       - name: Apply patches
         run: |
           Set-Location webrtc-src/src
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}/patches-checkout/4k.patch"
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}/patches-checkout/add_licenses.patch"
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}/patches-checkout/windows_fix_abseil.patch"
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}/patches-checkout/windows_fix_optional.patch"
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}/patches-checkout/windows_add_deps.patch"
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\4k.patch"
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\add_licenses.patch"
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\windows_fix_abseil.patch"
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\windows_fix_optional.patch"
+          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\windows_add_deps.patch"
 
       - name: Build Windows x64
         run: |
