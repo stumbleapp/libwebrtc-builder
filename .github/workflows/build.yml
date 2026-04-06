@@ -57,7 +57,11 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
+          for i in 1 2 3 4 5; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/5..."
+            sleep $((60 * 2 ** i))
+          done
           cd src
           for i in 1 2 3 4 5; do
             gclient sync && break
@@ -111,7 +115,11 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
+          for i in 1 2 3 4 5; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/5..."
+            sleep $((60 * 2 ** i))
+          done
           cd src
           for i in 1 2 3 4 5; do
             gclient sync && break
@@ -299,7 +307,11 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
+          for i in 1 2 3 4 5; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/5..."
+            sleep $((60 * 2 ** i))
+          done
           cd src
           for i in 1 2 3 4 5; do
             gclient sync && break
@@ -382,7 +394,11 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
+          for i in 1 2 3 4 5; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/5..."
+            sleep $((60 * 2 ** i))
+          done
           cd src
           for i in 1 2 3 4 5; do
             gclient sync && break
@@ -474,7 +490,11 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          fetch --nohooks webrtc
+          for i in 1 2 3 4 5; do
+            fetch --nohooks webrtc && break
+            echo "Fetch failed, retry $i/5..."
+            sleep $((60 * 2 ** i))
+          done
           cd src
           for i in 1 2 3 4 5; do
             gclient sync && break
@@ -673,7 +693,13 @@ jobs:
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
-          fetch --nohooks webrtc
+          for ($i = 1; $i -le 5; $i++) {
+            fetch --nohooks webrtc
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Output "Fetch failed, retry $i/5..."
+            $sleep = [Math]::Pow(2, $i) * 60
+            Start-Sleep -Seconds $sleep
+          }
           Set-Location src
           for ($i = 1; $i -le 5; $i++) {
             gclient sync
