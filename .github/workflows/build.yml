@@ -133,8 +133,26 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_arm64
-          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=false rtc_use_perfetto=false rtc_build_java=false"
-          ninja -C out_arm64 -j16 libwebrtc || true
+          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
+          ninja -C out_arm64 -j16 sdk/android/libjingle_peerconnection_so
+
+      - name: Create Android arm64 artifact
+        run: |
+          cd webrtc-src/src
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-arm64-${VERSION}/lib/arm64-v8a
+          cd out_arm64/obj
+          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
+          /usr/bin/ar -rc ../../../output-arm64-${VERSION}/lib/arm64-v8a/libwebrtc-arm64-v8a.a `find . -name '*.o' | grep -v sdk/android`
+          test -f ../../../output-arm64-${VERSION}/lib/arm64-v8a/libwebrtc-arm64-v8a.a
+          cd ../../..
+          zip -r -0 libwebrtc-android-arm64-${VERSION}.zip output-arm64-${VERSION}/lib
+
+      - name: Upload Android arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-arm64
+          path: webrtc-src/src/libwebrtc-android-arm64-*.zip
 
       - name: Build Android armv7
         run: |
@@ -142,8 +160,26 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_armv7
-          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=false rtc_use_perfetto=false rtc_build_java=false"
-          ninja -C out_armv7 -j16 libwebrtc || true
+          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
+          ninja -C out_armv7 -j16 sdk/android/libjingle_peerconnection_so
+
+      - name: Create Android armv7 artifact
+        run: |
+          cd webrtc-src/src
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-armv7-${VERSION}/lib/armeabi-v7a
+          cd out_armv7/obj
+          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
+          /usr/bin/ar -rc ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a `find . -name '*.o' | grep -v sdk/android`
+          test -f ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a
+          cd ../../..
+          zip -r -0 libwebrtc-android-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
+
+      - name: Upload Android armv7 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-armv7
+          path: webrtc-src/src/libwebrtc-android-armv7-*.zip
 
       - name: Build Android x64
         run: |
@@ -151,20 +187,20 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_x64
-          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=false rtc_use_perfetto=false rtc_build_java=false"
-          ninja -C out_x64 -j16 libwebrtc || true
+          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
+          ninja -C out_x64 -j16 sdk/android/libjingle_peerconnection_so
 
-      - name: Create Android arm64 artifact
+      - name: Create Android x64 artifact
         run: |
           cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib/arm64-v8a
-          cd out_arm64/obj
+          mkdir -p output-x64-${VERSION}/lib/x86_64
+          cd out_x64/obj
           find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-${VERSION}/lib/arm64-v8a/libwebrtc-arm64-v8a.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-${VERSION}/lib/arm64-v8a/libwebrtc-arm64-v8a.a
+          /usr/bin/ar -rc ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a `find . -name '*.o' | grep -v sdk/android`
+          test -f ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a
           cd ../../..
-          zip -r -0 libwebrtc-android-arm64-${VERSION}.zip output-${VERSION}/lib
+          zip -r -0 libwebrtc-android-x64-${VERSION}.zip output-x64-${VERSION}/lib
 
       - name: Upload Android arm64 artifact
         uses: actions/upload-artifact@v4
@@ -176,13 +212,13 @@ jobs:
         run: |
           cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib/armeabi-v7a
+          mkdir -p output-armv7-${VERSION}/lib/armeabi-v7a
           cd out_armv7/obj
           find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a
+          /usr/bin/ar -rc ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a `find . -name '*.o' | grep -v sdk/android`
+          test -f ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a
           cd ../../..
-          zip -r -0 libwebrtc-android-armv7-${VERSION}.zip output-${VERSION}/lib
+          zip -r -0 libwebrtc-android-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
 
       - name: Upload Android armv7 artifact
         uses: actions/upload-artifact@v4
@@ -194,13 +230,13 @@ jobs:
         run: |
           cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib/x86_64
+          mkdir -p output-x64-${VERSION}/lib/x86_64
           cd out_x64/obj
           find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-${VERSION}/lib/x86_64/libwebrtc-x86_64.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-${VERSION}/lib/x86_64/libwebrtc-x86_64.a
+          /usr/bin/ar -rc ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a `find . -name '*.o' | grep -v sdk/android`
+          test -f ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a
           cd ../../..
-          zip -r -0 libwebrtc-android-x64-${VERSION}.zip output-${VERSION}/lib
+          zip -r -0 libwebrtc-android-x64-${VERSION}.zip output-x64-${VERSION}/lib
 
       - name: Upload Android x64 artifact
         uses: actions/upload-artifact@v4
@@ -354,14 +390,14 @@ jobs:
         run: |
           cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/include output-${VERSION}/lib output-${VERSION}/Frameworks
-          cp -R out_macos_arm64/WebRTC.framework output-${VERSION}/Frameworks/ || true
-          cp -R out_macos_arm64/WebRTC.dSYM output-${VERSION}/Frameworks/ || true
-          cp out_macos_arm64/obj/libwebrtc.a output-${VERSION}/lib/libwebrtc-arm64.a || true
-          cp -R out_macos_arm64/include/* output-${VERSION}/include/ 2>/dev/null || true
-          cp LICENSE output-${VERSION}/ 2>/dev/null || true
-          cp VERSION output-${VERSION}/ 2>/dev/null || true
-          zip -r -0 libwebrtc-macos-arm64-${VERSION}.zip output-${VERSION}/*
+          mkdir -p output-arm64-${VERSION}/include output-arm64-${VERSION}/lib output-arm64-${VERSION}/Frameworks
+          cp -R out_macos_arm64/WebRTC.framework output-arm64-${VERSION}/Frameworks/ || true
+          cp -R out_macos_arm64/WebRTC.dSYM output-arm64-${VERSION}/Frameworks/ || true
+          cp out_macos_arm64/obj/libwebrtc.a output-arm64-${VERSION}/lib/libwebrtc-arm64.a || true
+          cp -R out_macos_arm64/include/* output-arm64-${VERSION}/include/ 2>/dev/null || true
+          cp LICENSE output-arm64-${VERSION}/ 2>/dev/null || true
+          cp VERSION output-arm64-${VERSION}/ 2>/dev/null || true
+          zip -r -0 libwebrtc-macos-arm64-${VERSION}.zip output-arm64-${VERSION}/*
 
       - name: Upload macOS arm64 artifact
         uses: actions/upload-artifact@v4
@@ -373,14 +409,14 @@ jobs:
         run: |
           cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/include output-${VERSION}/lib output-${VERSION}/Frameworks
-          cp -R out_macos_x64/WebRTC.framework output-${VERSION}/Frameworks/ || true
-          cp -R out_macos_x64/WebRTC.dSYM output-${VERSION}/Frameworks/ || true
-          cp out_macos_x64/obj/libwebrtc.a output-${VERSION}/lib/libwebrtc-x64.a || true
-          cp -R out_macos_x64/include/* output-${VERSION}/include/ 2>/dev/null || true
-          cp LICENSE output-${VERSION}/ 2>/dev/null || true
-          cp VERSION output-${VERSION}/ 2>/dev/null || true
-          zip -r -0 libwebrtc-macos-x64-${VERSION}.zip output-${VERSION}/*
+          mkdir -p output-x64-${VERSION}/include output-x64-${VERSION}/lib output-x64-${VERSION}/Frameworks
+          cp -R out_macos_x64/WebRTC.framework output-x64-${VERSION}/Frameworks/ || true
+          cp -R out_macos_x64/WebRTC.dSYM output-x64-${VERSION}/Frameworks/ || true
+          cp out_macos_x64/obj/libwebrtc.a output-x64-${VERSION}/lib/libwebrtc-x64.a || true
+          cp -R out_macos_x64/include/* output-x64-${VERSION}/include/ 2>/dev/null || true
+          cp LICENSE output-x64-${VERSION}/ 2>/dev/null || true
+          cp VERSION output-x64-${VERSION}/ 2>/dev/null || true
+          zip -r -0 libwebrtc-macos-x64-${VERSION}.zip output-x64-${VERSION}/*
 
       - name: Upload macOS x64 artifact
         uses: actions/upload-artifact@v4
@@ -445,25 +481,25 @@ jobs:
         run: |
           cd webrtc-src/src
           gn gen out/Release-x64 --args='target_os="linux" target_cpu="x64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-x64 -j16
+          ninja -C out/Release-x64 -j16 webrtc
 
       - name: Build Linux x86
         run: |
           cd webrtc-src/src
           gn gen out/Release-x86 --args='target_os="linux" target_cpu="x86" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-x86 -j16
+          ninja -C out/Release-x86 -j16 webrtc
 
       - name: Build Linux arm64
         run: |
           cd webrtc-src/src
           gn gen out/Release-arm64 --args='target_os="linux" target_cpu="arm64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-arm64 -j16 || true
+          ninja -C out/Release-arm64 -j16 webrtc
 
       - name: Build Linux armv7
         run: |
           cd webrtc-src/src
           gn gen out/Release-armv7 --args='target_os="linux" target_cpu="arm" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-armv7 -j16 || true
+          ninja -C out/Release-armv7 -j16 webrtc
 
       - name: Create Linux x64 artifact
         run: |
@@ -472,13 +508,34 @@ jobs:
           ls -la out/Release-x64/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib
+          mkdir -p output-x64-${VERSION}/lib
           cd out/Release-x64/obj
           /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-${VERSION}/lib/libwebrtc-x64.a
-          test -f ../../../output-${VERSION}/lib/libwebrtc-x64.a
+          cp ../libwebrtc.a ../../../output-x64-${VERSION}/lib/libwebrtc-x64.a
+          test -f ../../../output-x64-${VERSION}/lib/libwebrtc-x64.a
           cd ../../..
-          zip -r -0 libwebrtc-linux-x64-${VERSION}.zip output-${VERSION}/lib
+          zip -r -0 libwebrtc-linux-x64-${VERSION}.zip output-x64-${VERSION}/lib
+
+      - name: Upload Linux x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: webrtc-src/src/libwebrtc-linux-x64-*.zip
+
+      - name: Create Linux x86 artifact
+        run: |
+          cd webrtc-src/src
+          echo "Checking build output..."
+          ls -la out/Release-x86/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
+          
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-x86-${VERSION}/lib
+          cd out/Release-x86/obj
+          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+          cp ../libwebrtc.a ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
+          test -f ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
+          cd ../../..
+          zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-x86-${VERSION}/lib
 
       - name: Upload Linux x64 artifact
         uses: actions/upload-artifact@v4
@@ -501,6 +558,21 @@ jobs:
           cd ../../..
           zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-${VERSION}/lib
 
+      - name: Create Linux x86 artifact
+        run: |
+          cd webrtc-src/src
+          echo "Checking build output..."
+          ls -la out/Release-x86/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
+          
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          mkdir -p output-x86-${VERSION}/lib
+          cd out/Release-x86/obj
+          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+          cp ../libwebrtc.a ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
+          test -f ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
+          cd ../../..
+          zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-x86-${VERSION}/lib
+
       - name: Upload Linux x86 artifact
         uses: actions/upload-artifact@v4
         with:
@@ -514,13 +586,13 @@ jobs:
           ls -la out/Release-arm64/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib
+          mkdir -p output-arm64-${VERSION}/lib
           cd out/Release-arm64/obj
           /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-${VERSION}/lib/libwebrtc-arm64.a
-          test -f ../../../output-${VERSION}/lib/libwebrtc-arm64.a
+          cp ../libwebrtc.a ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
+          test -f ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
           cd ../../..
-          zip -r -0 libwebrtc-linux-arm64-${VERSION}.zip output-${VERSION}/lib
+          zip -r -0 libwebrtc-linux-arm64-${VERSION}.zip output-arm64-${VERSION}/lib
 
       - name: Upload Linux arm64 artifact
         uses: actions/upload-artifact@v4
@@ -535,13 +607,13 @@ jobs:
           ls -la out/Release-armv7/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
           
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib
+          mkdir -p output-armv7-${VERSION}/lib
           cd out/Release-armv7/obj
           /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-${VERSION}/lib/libwebrtc-armv7.a
-          test -f ../../../output-${VERSION}/lib/libwebrtc-armv7.a
+          cp ../libwebrtc.a ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
+          test -f ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
           cd ../../..
-          zip -r -0 libwebrtc-linux-armv7-${VERSION}.zip output-${VERSION}/lib
+          zip -r -0 libwebrtc-linux-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
 
       - name: Upload Linux armv7 artifact
         uses: actions/upload-artifact@v4
@@ -645,15 +717,15 @@ jobs:
           Get-ChildItem out/Release/obj -ErrorAction SilentlyContinue | Select-Object -First 10
           
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
-          New-Item -ItemType Directory -Force -Path lib | Out-Null
+          New-Item -ItemType Directory -Force -Path lib-x64 | Out-Null
           if (Test-Path out/Release/obj/webrtc.lib) {
-            Copy-Item out/Release/obj/webrtc.lib lib/webrtc-x64.lib
+            Copy-Item out/Release/obj/webrtc.lib lib-x64/webrtc-x64.lib
           }
-          Get-ChildItem lib/ -ErrorAction SilentlyContinue | Select-Object Name
-          if ((Get-ChildItem lib/ -ErrorAction SilentlyContinue).Count -eq 0) {
+          Get-ChildItem lib-x64/ -ErrorAction SilentlyContinue | Select-Object Name
+          if ((Get-ChildItem lib-x64/ -ErrorAction SilentlyContinue).Count -eq 0) {
             throw "lib folder is empty!"
           }
-          Compress-Archive -Path lib/* -DestinationPath "libwebrtc-win-x64-${VERSION}.zip" -CompressionLevel NoCompression -Force
+          Compress-Archive -Path lib-x64/* -DestinationPath "libwebrtc-win-x64-${VERSION}.zip" -CompressionLevel NoCompression -Force
 
       - name: Upload Windows x64 artifact
         uses: actions/upload-artifact@v4
@@ -668,15 +740,15 @@ jobs:
           Get-ChildItem out/Release-x86/obj -ErrorAction SilentlyContinue | Select-Object -First 10
           
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
-          New-Item -ItemType Directory -Force -Path lib | Out-Null
+          New-Item -ItemType Directory -Force -Path lib-x86 | Out-Null
           if (Test-Path out/Release-x86/obj/webrtc.lib) {
-            Copy-Item out/Release-x86/obj/webrtc.lib lib/webrtc-x86.lib
+            Copy-Item out/Release-x86/obj/webrtc.lib lib-x86/webrtc-x86.lib
           }
-          Get-ChildItem lib/ -ErrorAction SilentlyContinue | Select-Object Name
-          if ((Get-ChildItem lib/ -ErrorAction SilentlyContinue).Count -eq 0) {
+          Get-ChildItem lib-x86/ -ErrorAction SilentlyContinue | Select-Object Name
+          if ((Get-ChildItem lib-x86/ -ErrorAction SilentlyContinue).Count -eq 0) {
             throw "lib folder is empty!"
           }
-          Compress-Archive -Path lib/* -DestinationPath "libwebrtc-win-x86-${VERSION}.zip" -CompressionLevel NoCompression -Force
+          Compress-Archive -Path lib-x86/* -DestinationPath "libwebrtc-win-x86-${VERSION}.zip" -CompressionLevel NoCompression -Force
 
       - name: Upload Windows x86 artifact
         uses: actions/upload-artifact@v4
