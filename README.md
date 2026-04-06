@@ -13,12 +13,11 @@ Built from source every week.
 
 ## Platforms
 
-- 🍎 iOS — `.xcframework` — arm64 (device + simulator)
-- 🖥️ macOS — `.xcframework` — arm64 + x64 (includes Catalyst)
-- 🤖 Android — `.a` — arm64, armv7, x64, x86
-- 🪟 Windows — `.lib` — x64 + x86
-- 🐧 Linux — `.a` — x64
-- 🦾 Linux ARM — `.a` — arm
+- 🍎 iOS — `.xcframework` — arm64, x64
+- 🖥️ macOS — `.framework` + `.a` — arm64, x64
+- 🤖 Android — `.a` — arm64, armv7, x64
+- 🪟 Windows — `.lib` — x64, x86
+- 🐧 Linux — `.a` — x64, x86, arm64, armv7
 
 ---
 
@@ -39,23 +38,44 @@ fatal error: 'absl/base/internal/int128_have_intrinsic.inc' file not found
 ```bash
 VERSION=$(curl -s https://api.github.com/repos/stumbleapp/libwebrtc-builder/releases/latest | jq -r .tag_name | tr -d v)
 
-# iOS
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-ios-${VERSION}.zip
+# iOS arm64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-ios-arm64-${VERSION}.zip
 
-# macOS (includes Catalyst)
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos-${VERSION}.zip
+# iOS x64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-ios-x64-${VERSION}.zip
 
-# Android
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-${VERSION}.zip
+# macOS arm64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos-arm64-${VERSION}.zip
 
-# Windows
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-win-${VERSION}.zip
+# macOS x64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos-x64-${VERSION}.zip
+
+# Android arm64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-arm64-${VERSION}.zip
+
+# Android armv7
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-armv7-${VERSION}.zip
+
+# Android x64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-x64-${VERSION}.zip
+
+# Windows x64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-win-x64-${VERSION}.zip
+
+# Windows x86
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-win-x86-${VERSION}.zip
 
 # Linux x64
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-${VERSION}.zip
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-x64-${VERSION}.zip
 
-# Linux ARM
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-arm-${VERSION}.zip
+# Linux x86
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-x86-${VERSION}.zip
+
+# Linux arm64
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-arm64-${VERSION}.zip
+
+# Linux armv7
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-linux-armv7-${VERSION}.zip
 
 # Headers (required)
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-headers-${VERSION}.zip
