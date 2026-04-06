@@ -133,9 +133,10 @@ jobs:
           chmod +x ./build/install-build-deps.sh
           chmod +x ./build/install-build-deps.py
           ./build/install-build-deps.sh --no-chrome --no-nacl --no-android
-          export ANDROID_SDK_ROOT="$PWD/third_party/android_sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out
-          gn gen out/Release --args='target_os="android" target_cpu="arm64" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false'
+          gn gen out/Release --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false rtc_build_desugar=false"
           ninja -C out/Release -j8 libwebrtc || true
 
       - name: Prepare Android artifacts
@@ -145,7 +146,7 @@ jobs:
           mkdir -p output-${VERSION}/lib/arm64-v8a
           cd out/Release/obj
           find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          ../../third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../../../output-${VERSION}/lib/arm64-v8a/libwebrtc.a `find . -name '*.o' | grep -v sdk/android`
+          /usr/bin/ar -rc ../../../output-${VERSION}/lib/arm64-v8a/libwebrtc.a `find . -name '*.o' | grep -v sdk/android`
           ls -la ../../../output-${VERSION}/lib/arm64-v8a/
           cd ../../..
           zip -r -0 libwebrtc-android-${VERSION}.zip output-${VERSION}/lib
@@ -200,12 +201,12 @@ jobs:
       - name: Build iOS framework
         run: |
           cd webrtc-src/src
-          mkdir -p out
           mkdir -p build_output
           cd tools_webrtc/ios
+          mkdir -p out
           vpython3 build_ios_libs.py --output-dir out --build_config release
           ls -la out/
-          cp out/WebRTC.xcframework ../../build_output/ || true
+          cp -R out/WebRTC.xcframework ../../build_output/ || true
 
       - name: Create iOS artifact
         run: |
@@ -262,11 +263,13 @@ jobs:
 
       - name: Build macOS framework
         run: |
-          cd webrtc-src/src/tools_webrtc/ios
+          cd webrtc-src/src
+          mkdir -p build_output
+          cd tools_webrtc/ios
           mkdir -p out_macos
           vpython3 build_ios_libs.py --output-dir out_macos --build_config release --arch arm64 x64
           ls -la out_macos/
-          cp out_macos/WebRTC.xcframework ../../build_output/WebRTC-mac.xcframework || true
+          cp -R out_macos/WebRTC.xcframework ../../build_output/WebRTC-mac.xcframework || true
 
       - name: Create macOS artifact
         run: |
