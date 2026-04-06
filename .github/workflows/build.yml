@@ -58,6 +58,7 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
+            rm -rf src 2>/dev/null || true
             fetch --nohooks webrtc && break
             echo "Fetch failed, retry $i/5..."
             sleep $((60 * 2 ** i))
@@ -116,6 +117,7 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
+            rm -rf src 2>/dev/null || true
             fetch --nohooks webrtc && break
             echo "Fetch failed, retry $i/5..."
             sleep $((60 * 2 ** i))
@@ -308,6 +310,7 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
+            rm -rf src 2>/dev/null || true
             fetch --nohooks webrtc && break
             echo "Fetch failed, retry $i/5..."
             sleep $((60 * 2 ** i))
@@ -395,6 +398,7 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
+            rm -rf src 2>/dev/null || true
             fetch --nohooks webrtc && break
             echo "Fetch failed, retry $i/5..."
             sleep $((60 * 2 ** i))
@@ -491,6 +495,7 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5; do
+            rm -rf src 2>/dev/null || true
             fetch --nohooks webrtc && break
             echo "Fetch failed, retry $i/5..."
             sleep $((60 * 2 ** i))
@@ -689,11 +694,12 @@ jobs:
       
       - name: Fetch WebRTC source
         run: |
-          mkdir -p webrtc-src
+          New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
           for ($i = 1; $i -le 5; $i++) {
+            if (Test-Path src) { Remove-Item -Recurse -Force src }
             fetch --nohooks webrtc
             if ($LASTEXITCODE -eq 0) { break }
             Write-Output "Fetch failed, retry $i/5..."
