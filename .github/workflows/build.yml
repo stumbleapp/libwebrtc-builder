@@ -44,6 +44,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Install depot_tools
         if: steps.cache-depot-tools.outputs.cache-hit != 'true'
@@ -56,6 +57,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          enableCrossOsArchive: true
 
   build-headers:
     needs: [check-version, prepare-depot-tools]
@@ -75,6 +77,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Setup depot_tools path
         run: |
@@ -90,16 +93,15 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
+            sleep $((30 * i))
             cd ${{ github.workspace }}
             rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
-            sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
             echo "Fetch failed after 10 retries"
@@ -111,7 +113,7 @@ jobs:
               break
             fi
             echo "Sync failed, retry $i/10..."
-            sleep $((60 * 2 ** i))
+            sleep $((60 * 2 ** (i - 1)))
           done
 
       - name: Create headers artifact
@@ -155,6 +157,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Setup depot_tools path
         run: |
@@ -170,16 +173,15 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
+            sleep $((30 * i))
             cd ${{ github.workspace }}
             rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
-            sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
             echo "Fetch failed after 10 retries"
@@ -191,7 +193,7 @@ jobs:
               break
             fi
             echo "Sync failed, retry $i/10..."
-            sleep $((60 * 2 ** i))
+            sleep $((60 * 2 ** (i - 1)))
           done
 
       - name: Apply patches
@@ -277,42 +279,6 @@ jobs:
           cd ../../..
           zip -r -0 libwebrtc-android-x64-${VERSION}.zip output-x64-${VERSION}/lib
 
-      - name: Upload Android arm64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-arm64
-          path: webrtc-src/src/libwebrtc-android-arm64-*.zip
-
-      - name: Create Android armv7 artifact
-        run: |
-          cd webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-armv7-${VERSION}/lib/armeabi-v7a
-          cd out_armv7/obj
-          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a
-          cd ../../..
-          zip -r -0 libwebrtc-android-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
-
-      - name: Upload Android armv7 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-armv7
-          path: webrtc-src/src/libwebrtc-android-armv7-*.zip
-
-      - name: Create Android x64 artifact
-        run: |
-          cd webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x64-${VERSION}/lib/x86_64
-          cd out_x64/obj
-          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a
-          cd ../../..
-          zip -r -0 libwebrtc-android-x64-${VERSION}.zip output-x64-${VERSION}/lib
-
       - name: Upload Android x64 artifact
         uses: actions/upload-artifact@v4
         with:
@@ -369,6 +335,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Setup depot_tools path
         run: |
@@ -384,16 +351,15 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
+            sleep $((30 * i))
             cd ${{ github.workspace }}
             rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
-            sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
             echo "Fetch failed after 10 retries"
@@ -405,7 +371,7 @@ jobs:
               break
             fi
             echo "Sync failed, retry $i/10..."
-            sleep $((60 * 2 ** i))
+            sleep $((60 * 2 ** (i - 1)))
           done
 
       - name: Apply patches
@@ -478,6 +444,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Setup depot_tools path
         run: |
@@ -493,16 +460,15 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
+            sleep $((30 * i))
             cd ${{ github.workspace }}
             rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
-            sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
             echo "Fetch failed after 10 retries"
@@ -514,7 +480,7 @@ jobs:
               break
             fi
             echo "Sync failed, retry $i/10..."
-            sleep $((60 * 2 ** i))
+            sleep $((60 * 2 ** (i - 1)))
           done
 
       - name: Apply patches
@@ -589,18 +555,19 @@ jobs:
           fetch-depth: 1
           sparse-checkout: |
             patches
-      
+
       - name: Restore depot_tools
         id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Setup depot_tools path
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-       
+
       - name: Fetch WebRTC source
         run: |
           rm -rf webrtc-src
@@ -611,16 +578,15 @@ jobs:
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
+            sleep $((30 * i))
             cd ${{ github.workspace }}
             rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
-            sleep $((60 * 2 ** i))
           done
           if [ ! -d src ]; then
             echo "Fetch failed after 10 retries"
@@ -632,7 +598,7 @@ jobs:
               break
             fi
             echo "Sync failed, retry $i/10..."
-            sleep $((60 * 2 ** i))
+            sleep $((60 * 2 ** (i - 1)))
           done
 
       - name: Apply patches
@@ -759,42 +725,6 @@ jobs:
           cd ../../..
           zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-x86-${VERSION}/lib
 
-      - name: Upload Linux x64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-x64
-          path: webrtc-src/src/libwebrtc-linux-x64-*.zip
-
-      - name: Create Linux x86 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-x86/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-${VERSION}/lib
-          cd out/Release-x86/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-${VERSION}/lib/libwebrtc-x86.a
-          test -f ../../../output-${VERSION}/lib/libwebrtc-x86.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-${VERSION}/lib
-
-      - name: Create Linux x86 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-x86/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x86-${VERSION}/lib
-          cd out/Release-x86/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
-          test -f ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-x86-${VERSION}/lib
-
       - name: Upload Linux x86 artifact
         uses: actions/upload-artifact@v4
         with:
@@ -821,6 +751,7 @@ jobs:
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          enableCrossOsArchive: true
 
       - name: Setup depot_tools path
         run: |
@@ -835,17 +766,14 @@ jobs:
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
           for ($i = 1; $i -le 10; $i++) {
-            $preSleep = 60 * $i
-            Start-Sleep -Seconds $preSleep
             if (fetch --nohooks webrtc) { break }
             Write-Output "Fetch failed, retry $i/10..."
+            Start-Sleep -Seconds (30 * $i)
             Set-Location $env:GITHUB_WORKSPACE
             if (Test-Path webrtc-src) { Remove-Item -Recurse -Force webrtc-src }
             if (Test-Path .gclient) { Remove-Item -Force .gclient }
             New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
             Set-Location webrtc-src
-            $sleep = [Math]::Pow(2, $i) * 60
-            Start-Sleep -Seconds $sleep
           }
           if (-not (Test-Path src)) {
             Write-Output "Fetch failed after 10 retries"
@@ -855,7 +783,7 @@ jobs:
           for ($i = 1; $i -le 10; $i++) {
             if (gclient sync) { break }
             Write-Output "Sync failed, retry $i/10..."
-            $sleep = [Math]::Pow(2, $i) * 60
+            $sleep = [Math]::Pow(2, $i - 1) * 60
             Start-Sleep -Seconds $sleep
           }
 
