@@ -51,7 +51,7 @@ jobs:
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
 
       - name: Save depot_tools
-        if: needs.check-version.outputs.new_version != ''
+        if: steps.cache-depot-tools.outputs.cache-hit != 'true' && needs.check-version.outputs.new_version != ''
         uses: actions/cache@v4
         with:
           path: depot_tools
