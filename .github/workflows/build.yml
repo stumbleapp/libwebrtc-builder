@@ -70,11 +70,12 @@ jobs:
             patches
 
       - name: Restore depot_tools
+        id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
-      
+
       - name: Setup depot_tools path
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
@@ -90,7 +91,7 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((30 * i))
+            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
@@ -150,6 +151,7 @@ jobs:
         uses: android-actions/setup-android@v4
       
       - name: Restore depot_tools
+        id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
@@ -170,7 +172,7 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((30 * i))
+            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
@@ -364,6 +366,7 @@ jobs:
           xcode-version: "latest-stable"
       
       - name: Restore depot_tools
+        id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
@@ -384,7 +387,7 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((30 * i))
+            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
@@ -473,6 +476,7 @@ jobs:
           xcode-version: "latest-stable"
       
       - name: Restore depot_tools
+        id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
@@ -493,7 +497,7 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((30 * i))
+            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
@@ -591,6 +595,7 @@ jobs:
             patches
       
       - name: Restore depot_tools
+        id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
@@ -611,7 +616,7 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
-            sleep $((30 * i))
+            sleep $((60 * i))
             if fetch --nohooks webrtc; then
               break
             fi
@@ -816,6 +821,7 @@ jobs:
             patches
       
       - name: Restore depot_tools
+        id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
@@ -835,7 +841,7 @@ jobs:
           $env:GIT_HTTP_TIMEOUT = "300"
           $env:GIT_HTTP_MAX_CONCURRENT_OPERATIONS = "1"
           for ($i = 1; $i -le 10; $i++) {
-            $preSleep = 30 * $i
+            $preSleep = 60 * $i
             Start-Sleep -Seconds $preSleep
             if (fetch --nohooks webrtc) { break }
             Write-Output "Fetch failed, retry $i/10..."
