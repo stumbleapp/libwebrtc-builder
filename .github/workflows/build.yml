@@ -973,3 +973,5 @@ jobs:
         with:
           commit_message: "Update last built version to ${{ needs.check-version.outputs.new_version }}"
           file_pattern: ".last-built-version"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
