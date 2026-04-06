@@ -7,7 +7,7 @@
 </p>
 
 Pre-built WebRTC binaries and complete C++ headers for all platforms.  
-Built from source every two weeks.
+Built from source every week.
 
 ---
 
@@ -86,7 +86,7 @@ pod 'libWebRTC', :git => 'https://github.com/stumbleapp/libwebrtc-builder'
 
 ## Schedule
 
-- Auto: Every 2 weeks (Sunday UTC)
+- Auto: Every week (Sunday UTC)
 - Manual: [Actions](https://github.com/stumbleapp/libwebrtc-builder/actions) → Run workflow
 
 ---
