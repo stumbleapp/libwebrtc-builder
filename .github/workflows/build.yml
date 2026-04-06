@@ -136,7 +136,7 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_arm64
-          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false rtc_build_desugar=false"
+          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=false rtc_use_perfetto=false rtc_build_java=false"
           ninja -C out_arm64 -j8 libwebrtc || true
 
       - name: Build Android armv7
@@ -145,7 +145,7 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_armv7
-          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false rtc_build_desugar=false"
+          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=false rtc_use_perfetto=false rtc_build_java=false"
           ninja -C out_armv7 -j8 libwebrtc || true
 
       - name: Build Android x64
@@ -154,7 +154,7 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_x64
-          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false rtc_build_desugar=false"
+          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=false rtc_use_perfetto=false rtc_build_java=false"
           ninja -C out_x64 -j8 libwebrtc || true
 
       - name: Create Android arm64 artifact
