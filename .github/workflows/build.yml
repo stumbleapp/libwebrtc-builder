@@ -57,10 +57,10 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           fetch --nohooks webrtc
           cd src
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
+            echo "Sync failed, retry $i/5..."
+            sleep 60
           done
 
       - name: Create headers artifact
@@ -114,10 +114,10 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           fetch --nohooks webrtc
           cd src
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
+            echo "Sync failed, retry $i/5..."
+            sleep 60
           done
 
       - name: Apply patches
@@ -190,10 +190,10 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           fetch --nohooks webrtc
           cd src
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
+            echo "Sync failed, retry $i/5..."
+            sleep 60
           done
 
       - name: Apply patches
@@ -256,10 +256,10 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           fetch --nohooks webrtc
           cd src
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
+            echo "Sync failed, retry $i/5..."
+            sleep 60
           done
 
       - name: Apply patches
@@ -315,10 +315,10 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           fetch --nohooks webrtc
           cd src
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
+            echo "Sync failed, retry $i/5..."
+            sleep 60
           done
 
       - name: Apply patches
@@ -395,10 +395,10 @@ jobs:
           export GIT_HTTP_TIMEOUT=300
           fetch --nohooks webrtc
           cd src
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             gclient sync && break
-            echo "Sync failed, retry $i/3..."
-            sleep 30
+            echo "Sync failed, retry $i/5..."
+            sleep 60
           done
 
       - name: Apply patches
@@ -474,11 +474,11 @@ jobs:
           $env:GIT_HTTP_TIMEOUT = "300"
           fetch --nohooks webrtc
           Set-Location src
-          for ($i = 1; $i -le 3; $i++) {
+          for ($i = 1; $i -le 5; $i++) {
             gclient sync
             if ($LASTEXITCODE -eq 0) { break }
-            Write-Output "Sync failed, retry $i/3..."
-            Start-Sleep -Seconds 30
+            Write-Output "Sync failed, retry $i/5..."
+            Start-Sleep -Seconds 60
           }
 
       - name: Apply patches
