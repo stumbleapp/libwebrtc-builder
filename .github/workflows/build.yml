@@ -89,7 +89,6 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((60 * i))
             if fetch --nohooks webrtc; then
@@ -170,7 +169,6 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((60 * i))
             if fetch --nohooks webrtc; then
@@ -385,7 +383,6 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((60 * i))
             if fetch --nohooks webrtc; then
@@ -495,7 +492,6 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((60 * i))
             if fetch --nohooks webrtc; then
@@ -614,7 +610,6 @@ jobs:
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
-          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((60 * i))
             if fetch --nohooks webrtc; then
@@ -839,7 +834,6 @@ jobs:
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
-          $env:GIT_HTTP_MAX_CONCURRENT_OPERATIONS = "1"
           for ($i = 1; $i -le 10; $i++) {
             $preSleep = 60 * $i
             Start-Sleep -Seconds $preSleep
