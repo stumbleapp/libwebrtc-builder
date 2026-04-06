@@ -82,17 +82,21 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           rm -rf webrtc-src
+          cd ${{ github.workspace }}
+          rm -rf webrtc-src .gclient
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
+          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
-            rm -rf webrtc-src
+            cd ${{ github.workspace }}
+            rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
@@ -158,17 +162,21 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           rm -rf webrtc-src
+          cd ${{ github.workspace }}
+          rm -rf webrtc-src .gclient
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
+          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
-            rm -rf webrtc-src
+            cd ${{ github.workspace }}
+            rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
@@ -368,17 +376,21 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           rm -rf webrtc-src
+          cd ${{ github.workspace }}
+          rm -rf webrtc-src .gclient
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
+          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
-            rm -rf webrtc-src
+            cd ${{ github.workspace }}
+            rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
@@ -473,17 +485,21 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           rm -rf webrtc-src
+          cd ${{ github.workspace }}
+          rm -rf webrtc-src .gclient
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
+          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
-            rm -rf webrtc-src
+            cd ${{ github.workspace }}
+            rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
@@ -587,17 +603,21 @@ jobs:
       - name: Fetch WebRTC source
         run: |
           rm -rf webrtc-src
+          cd ${{ github.workspace }}
+          rm -rf webrtc-src .gclient
           mkdir -p webrtc-src
           cd webrtc-src
           export DEPOT_TOOLS_HTTP_TIMEOUT=600
           export GIT_HTTP_TIMEOUT=300
+          export GIT_HTTP_MAX_CONCURRENT_OPERATIONS=1
           for i in 1 2 3 4 5 6 7 8 9 10; do
             sleep $((30 * i))
             if fetch --nohooks webrtc; then
               break
             fi
             echo "Fetch failed, retry $i/10..."
-            rm -rf webrtc-src
+            cd ${{ github.workspace }}
+            rm -rf webrtc-src .gclient
             mkdir -p webrtc-src
             cd webrtc-src
             sleep $((60 * 2 ** i))
@@ -803,21 +823,25 @@ jobs:
 
       - name: Setup depot_tools path
         run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}/depot_tools"
-      
+          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
+
       - name: Fetch WebRTC source
         run: |
           if (Test-Path webrtc-src) { Remove-Item -Recurse -Force webrtc-src }
+          if (Test-Path .gclient) { Remove-Item -Force .gclient }
           New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
           Set-Location webrtc-src
           $env:DEPOT_TOOLS_HTTP_TIMEOUT = "600"
           $env:GIT_HTTP_TIMEOUT = "300"
+          $env:GIT_HTTP_MAX_CONCURRENT_OPERATIONS = "1"
           for ($i = 1; $i -le 10; $i++) {
             $preSleep = 30 * $i
             Start-Sleep -Seconds $preSleep
             if (fetch --nohooks webrtc) { break }
             Write-Output "Fetch failed, retry $i/10..."
+            Set-Location $env:GITHUB_WORKSPACE
             if (Test-Path webrtc-src) { Remove-Item -Recurse -Force webrtc-src }
+            if (Test-Path .gclient) { Remove-Item -Force .gclient }
             New-Item -ItemType Directory -Force -Path webrtc-src | Out-Null
             Set-Location webrtc-src
             $sleep = [Math]::Pow(2, $i) * 60
