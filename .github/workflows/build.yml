@@ -65,8 +65,14 @@ jobs:
     steps:
       - name: Configure git cookie
         run: |
+          # Write cookie in Netscape format
           echo "${{ secrets.GOOGLE_GIT_COOKIE }}" > ~/.gitcookies
+          # Set git to use the cookie file
           git config --global http.cookieFile ~/.gitcookies
+          # Also set credential helper  
+          git config --global credential.helper store
+          # Export for subprocesses
+          echo "GITCOOKIE=~/.gitcookies" >> $GITHUB_ENV
 
       - name: Restore depot_tools
         uses: actions/cache@v4
