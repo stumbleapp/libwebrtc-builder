@@ -65,8 +65,7 @@ jobs:
     steps:
       - name: Configure git cookie
         run: |
-          mkdir -p ~/.gitcookies
-          echo "${{ secrets.GOOGLE_GIT_COOKIE }}" >> ~/.gitcookies
+          echo "${{ secrets.GOOGLE_GIT_COOKIE }}" > ~/.gitcookies
           git config --global http.cookieFile ~/.gitcookies
 
       - name: Restore depot_tools
