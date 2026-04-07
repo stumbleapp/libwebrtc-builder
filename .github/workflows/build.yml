@@ -65,20 +65,23 @@ jobs:
     steps:
       - name: Configure git cookie
         run: |
-          # Write cookie in Netscape format (gitcookies without extension)
+          # Write cookie in Netscape format
           echo "${{ secrets.GOOGLE_GIT_COOKIE }}" > ~/.gitcookies
           chmod 600 ~/.gitcookies
           
           # Configure git to use the cookie file
           git config --global http.cookieFile ~/.gitcookies
           
-          # Set helper to use cookies for authentication
-          git config --global credential.https://googlesource.com.helper "store"
-          git config --global credential.https://chromium.googlesource.com.helper "store"
+          # Also use credential helper
           git config --global credential.helper store
           
-          # Verify cookie is set
-          cat ~/.gitcookies
+          # Try using SSO protocol as backup (Chromium uses this internally)
+          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/"
+          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/build"
+          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/buildtools"
+          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/testing"
+          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/third_party"
+          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/tools"
 
       - name: Restore depot_tools
         uses: actions/cache@v4
