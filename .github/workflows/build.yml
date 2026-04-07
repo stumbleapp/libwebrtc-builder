@@ -69,19 +69,18 @@ jobs:
           echo "${{ secrets.GOOGLE_GIT_COOKIE }}" > ~/.gitcookies
           chmod 600 ~/.gitcookies
           
-          # Configure git to use the cookie file
+          # Configure cookie file globally
           git config --global http.cookieFile ~/.gitcookies
           
-          # Also use credential helper
+          # Use credential helper  
           git config --global credential.helper store
           
-          # Try using SSO protocol as backup (Chromium uses this internally)
-          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/"
-          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/build"
-          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/buildtools"
-          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/testing"
-          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/third_party"
-          git config --global url."https://chromium.googlesource.com/".insteadOf "https://chromium.googlesource.com/chromium/src/tools"
+          # Set cookie file specifically for chromium.googlesource.com
+          git config --global "http.https://chromium.googlesource.com.cookieFile" ~/.gitcookies
+          git config --global "http.https://chromium.googlesource.com/chromium.src.cookieFile" ~/.gitcookies
+          
+          # Disable SSO rewrite - it's causing issues
+          # git config --global --unset-all url."sso://chromium.googlesource.com".insteadOf
 
       - name: Restore depot_tools
         uses: actions/cache@v4
