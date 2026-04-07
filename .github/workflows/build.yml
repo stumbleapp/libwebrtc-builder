@@ -65,20 +65,17 @@ jobs:
     steps:
       - name: Configure git cookie
         run: |
-          # Write cookie in Netscape format
-          echo "${{ secrets.GOOGLE_GIT_COOKIE }}" > ~/.gitcookies
+          # Decode base64 encoded cookie
+          echo "${{ secrets.GOOGLE_GIT_COOKIE }}" | base64 -d > ~/.gitcookies
           chmod 600 ~/.gitcookies
           
-          # Set cookie file for all googlesource domains
+          # Check what was written
+          echo "Cookie content:"
+          cat ~/.gitcookies
+          
+          # Set cookie file
           git config --global http.cookieFile ~/.gitcookies
           git config --global "http.https://chromium.googlesource.com.cookieFile" ~/.gitcookies
-          git config --global "http.https://googlesource.com.cookieFile" ~/.gitcookies
-          
-          # Configure credential helper
-          git config --global credential.helper store
-          
-          # Test direct git access to chromium.googlesource.com
-          GIT_CURL_VERBOSE=1 git ls-remote https://chromium.googlesource.com/chromium/src/buildtools.git HEAD 2>&1 | head -20
 
       - name: Restore depot_tools
         uses: actions/cache@v4
