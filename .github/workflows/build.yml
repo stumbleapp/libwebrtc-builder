@@ -69,22 +69,28 @@ jobs:
           echo "${{ secrets.GOOGLE_GIT_COOKIE }}" | base64 -d > ~/.gitcookies
           chmod 600 ~/.gitcookies
           
-          # Also create .netrc for tools that prefer it
-          # The cookie file format: .googlesource.com TRUE / TRUE expiry o token
-          # Extract the token part (last field) for netrc
+          # Add explicit entries for chromium.googlesource.com
+          # Extract the token from the existing cookie
           TOKEN=$(awk '{print $NF}' ~/.gitcookies)
-          echo "machine chromium.googlesource.com login git-$TOKEN password x" > ~/.netrc
-          chmod 600 ~/.netrc
           
-          # Configure git
+          # Create additional cookie entries for chromium.googlesource.com subpaths
+          echo ".chromium.googlesource.com	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          echo "chromium.googlesource.com	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          
+          # Also add entries for specific paths gclient uses
+          echo "chromium.googlesource.com/chromium/src/build	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          echo "chromium.googlesource.com/chromium/src/buildtools	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          echo "chromium.googlesource.com/chromium/src/tools	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          echo "chromium.googlesource.com/chromium/src/testing	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          echo "chromium.googlesource.com/chromium/src/third_party	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
+          
+          # Force git to use the cookie file
           git config --global http.cookieFile ~/.gitcookies
-          git config --global "http.https://chromium.googlesource.com.cookieFile" ~/.gitcookies
-          git config --global core.netrc ~/.netrc
+          git config --global http.extraHeader "Cookie: $TOKEN"
           
-          # Export for all subprocesses
-          export GIT_COOKIE_FILE=~/.gitcookies
-          echo "GIT_COOKIE_FILE=$GIT_COOKIE_FILE" >> $GITHUB_ENV
-          echo "GIT_TRACE=1" >> $GITHUB_ENV
+          # Print cookie file for debugging
+          echo "Cookie file contents:"
+          cat ~/.gitcookies
 
       - name: Restore depot_tools
         uses: actions/cache@v4
