@@ -69,13 +69,22 @@ jobs:
           echo "${{ secrets.GOOGLE_GIT_COOKIE }}" | base64 -d > ~/.gitcookies
           chmod 600 ~/.gitcookies
           
-          # Check what was written
-          echo "Cookie content:"
-          cat ~/.gitcookies
+          # Also create .netrc for tools that prefer it
+          # The cookie file format: .googlesource.com TRUE / TRUE expiry o token
+          # Extract the token part (last field) for netrc
+          TOKEN=$(awk '{print $NF}' ~/.gitcookies)
+          echo "machine chromium.googlesource.com login git-$TOKEN password x" > ~/.netrc
+          chmod 600 ~/.netrc
           
-          # Set cookie file
+          # Configure git
           git config --global http.cookieFile ~/.gitcookies
           git config --global "http.https://chromium.googlesource.com.cookieFile" ~/.gitcookies
+          git config --global core.netrc ~/.netrc
+          
+          # Export for all subprocesses
+          export GIT_COOKIE_FILE=~/.gitcookies
+          echo "GIT_COOKIE_FILE=$GIT_COOKIE_FILE" >> $GITHUB_ENV
+          echo "GIT_TRACE=1" >> $GITHUB_ENV
 
       - name: Restore depot_tools
         uses: actions/cache@v4
