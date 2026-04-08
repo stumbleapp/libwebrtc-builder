@@ -118,12 +118,13 @@ jobs:
           fi
 
       - name: Save to cache
+        if: needs.check-version.outputs.new_version != ''
         uses: actions/cache@v4
         with:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
   build-headers:
