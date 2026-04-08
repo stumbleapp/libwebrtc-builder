@@ -63,35 +63,6 @@ jobs:
     needs: prepare-depot-tools
     runs-on: ubuntu-latest
     steps:
-      - name: Configure git cookie
-        run: |
-          # Decode base64 encoded cookie
-          echo "${{ secrets.GOOGLE_GIT_COOKIE }}" | base64 -d > ~/.gitcookies
-          chmod 600 ~/.gitcookies
-          
-          # Add explicit entries for chromium.googlesource.com
-          # Extract the token from the existing cookie
-          TOKEN=$(awk '{print $NF}' ~/.gitcookies)
-          
-          # Create additional cookie entries for chromium.googlesource.com subpaths
-          echo ".chromium.googlesource.com	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          echo "chromium.googlesource.com	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          
-          # Also add entries for specific paths gclient uses
-          echo "chromium.googlesource.com/chromium/src/build	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          echo "chromium.googlesource.com/chromium/src/buildtools	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          echo "chromium.googlesource.com/chromium/src/tools	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          echo "chromium.googlesource.com/chromium/src/testing	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          echo "chromium.googlesource.com/chromium/src/third_party	TRUE	/	TRUE	2147483647	o	$TOKEN" >> ~/.gitcookies
-          
-          # Force git to use the cookie file
-          git config --global http.cookieFile ~/.gitcookies
-          git config --global http.extraHeader "Cookie: $TOKEN"
-          
-          # Print cookie file for debugging
-          echo "Cookie file contents:"
-          cat ~/.gitcookies
-
       - name: Restore depot_tools
         uses: actions/cache@v4
         with:
