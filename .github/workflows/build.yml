@@ -44,6 +44,7 @@ jobs:
 
   prepare-depot-tools:
     needs: check-version
+    if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -52,7 +53,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Install depot_tools
@@ -62,6 +63,7 @@ jobs:
 
   fetch-webrtc:
     needs: prepare-depot-tools
+    if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -69,7 +71,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -139,7 +141,7 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
@@ -183,7 +185,7 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
@@ -209,7 +211,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -352,7 +354,7 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
@@ -380,7 +382,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -454,7 +456,7 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
@@ -482,7 +484,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -570,7 +572,7 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
@@ -593,7 +595,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -752,7 +754,7 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
@@ -774,7 +776,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
