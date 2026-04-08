@@ -10,9 +10,17 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
 jobs:
   check-version:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       new_version: ${{ steps.check.outputs.new_version }}
       current_version: ${{ steps.check.outputs.current_version }}
@@ -37,13 +45,14 @@ jobs:
   prepare-depot-tools:
     needs: check-version
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     steps:
       - name: Cache depot_tools
         id: cache-depot-tools
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Install depot_tools
@@ -51,23 +60,16 @@ jobs:
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
 
-      - name: Save depot_tools
-        if: steps.cache-depot-tools.outputs.cache-hit != 'true' && needs.check-version.outputs.new_version != ''
-        uses: actions/cache@v4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          enableCrossOsArchive: true
-
   fetch-webrtc:
     needs: prepare-depot-tools
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     steps:
       - name: Restore depot_tools
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -76,7 +78,6 @@ jobs:
 
       - name: Fetch WebRTC source
         run: |
-          rm -rf webrtc-src
           cd ${{ github.workspace }}
           rm -rf webrtc-src .gclient
           mkdir -p webrtc-src
@@ -111,7 +112,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if command -v xz &> /dev/null; then
-            tar -I 'xz -9e -T0' -cf webrtc-src.tar.xz webrtc-src
+            tar -I 'xz -7 -T0' -cf webrtc-src.tar.xz webrtc-src
           else
             tar -czf webrtc-src.tar.gz webrtc-src
           fi
@@ -122,13 +123,14 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
   build-headers:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v4
@@ -136,14 +138,14 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.xz ]; then
-            tar -I 'xz -d' -xf webrtc-src.tar.xz
+            tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
           fi
@@ -172,6 +174,7 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v4
@@ -179,14 +182,14 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.xz ]; then
-            tar -I 'xz -d' -xf webrtc-src.tar.xz
+            tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
           fi
@@ -194,7 +197,6 @@ jobs:
       - name: Checkout patches
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
           sparse-checkout: |
             patches
 
@@ -206,7 +208,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -215,11 +217,19 @@ jobs:
 
       - name: Apply patches
         run: |
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
           cd ${{ github.workspace }}/webrtc-src/src
-          patch -p1 < ${{ github.workspace }}/patches/android_version.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/android_use_libunwind.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch || true
+          apply_patch ${{ github.workspace }}/patches/android_version.patch
+          apply_patch ${{ github.workspace }}/patches/android_use_libunwind.patch
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+          apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
 
       - name: Build Android arm64
         run: |
@@ -333,6 +343,7 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
+    timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v4
@@ -340,14 +351,14 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.xz ]; then
-            tar -I 'xz -d' -xf webrtc-src.tar.xz
+            tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
           fi
@@ -355,7 +366,6 @@ jobs:
       - name: Checkout patches
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
           sparse-checkout: |
             patches
 
@@ -369,7 +379,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -378,8 +388,16 @@ jobs:
 
       - name: Apply patches
         run: |
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
           cd webrtc-src/src
-          patch -p1 < ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch || true
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
       - name: Build iOS arm64
         run: |
@@ -427,6 +445,7 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
+    timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v4
@@ -434,14 +453,14 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.xz ]; then
-            tar -I 'xz -d' -xf webrtc-src.tar.xz
+            tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
           fi
@@ -449,7 +468,6 @@ jobs:
       - name: Checkout patches
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
           sparse-checkout: |
             patches
 
@@ -463,7 +481,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -472,8 +490,16 @@ jobs:
 
       - name: Apply patches
         run: |
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
           cd webrtc-src/src
-          patch -p1 < ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch || true
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
       - name: Build macOS arm64
         run: |
@@ -535,6 +561,7 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v4
@@ -542,14 +569,14 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.xz ]; then
-            tar -I 'xz -d' -xf webrtc-src.tar.xz
+            tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
           fi
@@ -557,7 +584,6 @@ jobs:
       - name: Checkout patches
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
           sparse-checkout: |
             patches
 
@@ -566,7 +592,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -575,16 +601,24 @@ jobs:
 
       - name: Apply patches
         run: |
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
           cd ${{ github.workspace }}/webrtc-src/src
-          patch -p1 < ${{ github.workspace }}/patches/4k_linux.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/linux_clang_optional.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/linux_remove_crel.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/nacl_armv6_2.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/4k.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/add_licenses.patch || true
-          patch -p1 < ${{ github.workspace }}/patches/add_deps.patch || true
+          apply_patch ${{ github.workspace }}/patches/4k_linux.patch
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+          apply_patch ${{ github.workspace }}/patches/linux_clang_optional.patch
+          apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
+          apply_patch ${{ github.workspace }}/patches/linux_remove_crel.patch
+          apply_patch ${{ github.workspace }}/patches/nacl_armv6_2.patch
+          apply_patch ${{ github.workspace }}/patches/4k.patch
+          apply_patch ${{ github.workspace }}/patches/add_licenses.patch
+          apply_patch ${{ github.workspace }}/patches/add_deps.patch
 
       - name: Install sysroot
         run: |
@@ -707,6 +741,7 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
+    timeout-minutes: 240
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
@@ -716,13 +751,13 @@ jobs:
           path: |
             webrtc-src.tar.xz
             webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          key: webrtc-source-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Decompress WebRTC source
         run: |
           if (Test-Path webrtc-src.tar.xz) {
-            tar -I 'xz -d' -xf webrtc-src.tar.xz
+            tar -Jxf webrtc-src.tar.xz
           } elseif (Test-Path webrtc-src.tar.gz) {
             tar -xzf webrtc-src.tar.gz
           }
@@ -730,7 +765,6 @@ jobs:
       - name: Checkout patches
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
           sparse-checkout: |
             patches
 
@@ -739,7 +773,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version || 'latest' }}
+          key: depot-tools-${{ needs.check-version.outputs.new_version || 'none' }}
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
@@ -748,12 +782,21 @@ jobs:
 
       - name: Apply patches
         run: |
+          function Apply-Patch {
+            param([string]$Patch)
+            $result = git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "$Patch" 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Output "✓ Applied: $(Split-Path $Patch -Leaf)"
+            } else {
+              Write-Output "⚠ Warning: $(Split-Path $Patch -Leaf) failed or already applied" 2>&1
+            }
+          }
           Set-Location webrtc-src/src
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\4k.patch" || true
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\add_licenses.patch" || true
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\windows_fix_abseil.patch" || true
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\windows_fix_optional.patch" || true
-          git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "${{ github.workspace }}\patches\windows_add_deps.patch" || true
+          Apply-Patch "${{ github.workspace }}\patches\4k.patch"
+          Apply-Patch "${{ github.workspace }}\patches\add_licenses.patch"
+          Apply-Patch "${{ github.workspace }}\patches\windows_fix_abseil.patch"
+          Apply-Patch "${{ github.workspace }}\patches\windows_fix_optional.patch"
+          Apply-Patch "${{ github.workspace }}\patches\windows_add_deps.patch"
 
       - name: Build Windows x64
         run: |
@@ -776,7 +819,8 @@ jobs:
           "libyuv_include_tests = false" | Out-File -Encoding ASCII args.txt
           gn gen out/Release --args-file=args.txt
           Write-Output "Running ninja..."
-          ninja -C out/Release -j16 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
+          ninja -C out/Release -j16
+          if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
       - name: Build Windows x86
         run: |
@@ -799,7 +843,8 @@ jobs:
           "libyuv_include_tests = false" | Out-File -Encoding ASCII args.txt
           gn gen out/Release-x86 --args-file=args.txt
           Write-Output "Running ninja..."
-          ninja -C out/Release-x86 -j16 2>&1 || Write-Output "Build failed with exit code $LASTEXITCODE"
+          ninja -C out/Release-x86 -j16
+          if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
       - name: Create Windows x64 artifact
         run: |
@@ -851,6 +896,7 @@ jobs:
     needs: [check-version, fetch-webrtc, build-headers, build-android, build-ios, build-macos, build-linux, build-windows]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -885,6 +931,11 @@ jobs:
       - name: Update last built version
         run: |
           echo ${{ needs.check-version.outputs.new_version }} > .last-built-version
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Commit version update
         uses: stefanzweifel/git-auto-commit-action@v5
