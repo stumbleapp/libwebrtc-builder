@@ -67,6 +67,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
+      - name: Check disk space before cleanup
+        run: |
+          df -h /
+          echo "=== Top directories ==="
+          sudo du -h --max-depth=1 /usr/local /opt /home 2>/dev/null | sort -hr | head -15
+
+      - name: Maximize GitHub runner space
+        uses: justinthelaw/maximize-github-runner-space@latest
+
+      - name: Check disk space after cleanup
+        run: |
+          df -h /
+
       - name: Restore depot_tools
         uses: actions/cache@v4
         with:
@@ -113,17 +126,26 @@ jobs:
       - name: Compress WebRTC source
         run: |
           cd ${{ github.workspace }}
-          if command -v xz &> /dev/null; then
+          if command -v zstd &> /dev/null; then
+            tar -I 'zstd -T0 -6' -cf webrtc-src.tar.zst webrtc-src
+          elif command -v xz &> /dev/null; then
             tar -I 'xz -7 -T0' -cf webrtc-src.tar.xz webrtc-src
           else
             tar -czf webrtc-src.tar.gz webrtc-src
           fi
+
+      - name: Check disk space after compression
+        run: |
+          echo "=== Archive size ==="
+          ls -lh webrtc-src.tar.* 2>/dev/null || echo "No archive found"
+          df -h /
 
       - name: Save to cache
         if: needs.check-version.outputs.new_version != ''
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -131,7 +153,7 @@ jobs:
 
   build-headers:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -139,6 +161,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -147,7 +170,9 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
-          if [ -f webrtc-src.tar.xz ]; then
+          if [ -f webrtc-src.tar.zst ]; then
+            tar -I 'zstd -d' -xf webrtc-src.tar.zst
+          elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
@@ -175,7 +200,7 @@ jobs:
 
   build-android:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -183,6 +208,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -191,7 +217,9 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
-          if [ -f webrtc-src.tar.xz ]; then
+          if [ -f webrtc-src.tar.zst ]; then
+            tar -I 'zstd -d' -xf webrtc-src.tar.zst
+          elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
@@ -344,7 +372,7 @@ jobs:
 
   build-ios:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: macos-latest
     timeout-minutes: 240
     steps:
@@ -352,6 +380,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -360,7 +389,9 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
-          if [ -f webrtc-src.tar.xz ]; then
+          if [ -f webrtc-src.tar.zst ]; then
+            tar -I 'zstd -d' -xf webrtc-src.tar.zst
+          elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
@@ -446,7 +477,7 @@ jobs:
 
   build-macos:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: macos-latest
     timeout-minutes: 240
     steps:
@@ -454,6 +485,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -462,7 +494,9 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
-          if [ -f webrtc-src.tar.xz ]; then
+          if [ -f webrtc-src.tar.zst ]; then
+            tar -I 'zstd -d' -xf webrtc-src.tar.zst
+          elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
@@ -562,7 +596,7 @@ jobs:
 
   build-linux:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -570,6 +604,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -578,7 +613,9 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
-          if [ -f webrtc-src.tar.xz ]; then
+          if [ -f webrtc-src.tar.zst ]; then
+            tar -I 'zstd -d' -xf webrtc-src.tar.zst
+          elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz
@@ -742,7 +779,7 @@ jobs:
 
   build-windows:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: windows-latest
     timeout-minutes: 240
     env:
@@ -752,6 +789,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            webrtc-src.tar.zst
             webrtc-src.tar.xz
             webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -759,7 +797,9 @@ jobs:
 
       - name: Decompress WebRTC source
         run: |
-          if (Test-Path webrtc-src.tar.xz) {
+          if (Test-Path webrtc-src.tar.zst) {
+            tar -I 'zstd -d' -xf webrtc-src.tar.zst
+          } elseif (Test-Path webrtc-src.tar.xz) {
             tar -Jxf webrtc-src.tar.xz
           } elseif (Test-Path webrtc-src.tar.gz) {
             tar -xzf webrtc-src.tar.gz
@@ -896,8 +936,8 @@ jobs:
           path: webrtc-src/src/libwebrtc-win-x86-*.zip
 
   release:
-    needs: [check-version, fetch-webrtc, build-headers, build-android, build-ios, build-macos, build-linux, build-windows]
-    if: needs.check-version.outputs.new_version != ''
+    needs: [check-version, fetch-webrtc]
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
