@@ -69,7 +69,7 @@ jobs:
     steps:
       - name: Check for cached WebRTC source
         id: cache-webrtc
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: .cache-exists.do-not-download
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
@@ -143,19 +143,13 @@ jobs:
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           cd ${{ github.workspace }}
-          echo "Starting compression..."
-          ls -la webrtc-src/
           if command -v zstd &> /dev/null; then
-            echo "Using zstd compression..."
-            tar -cf webrtc-src.tar webrtc-src
-            echo "Running zstd compression..."
-            zstd -T0 -6 webrtc-src.tar -o webrtc-src.tar.zst && rm webrtc-src.tar
+            tar -cf webrtc-src.tar webrtc-src && zstd -T0 -6 webrtc-src.tar -o webrtc-src.tar.zst && rm webrtc-src.tar
           elif command -v xz &> /dev/null; then
             tar -I 'xz -7 -T0' -cf webrtc-src.tar.xz webrtc-src
           else
             tar -czf webrtc-src.tar.gz webrtc-src
           fi
-          ls -lh webrtc-src.tar.*
 
       - name: Check disk space after compression
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -166,7 +160,7 @@ jobs:
 
       - name: Save to cache
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
@@ -183,7 +177,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
@@ -236,7 +230,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
@@ -415,7 +409,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
@@ -527,7 +521,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
@@ -653,7 +647,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
@@ -845,7 +839,7 @@ jobs:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: buildjet/cache@v4
         with:
           path: |
             webrtc-src.tar.zst
