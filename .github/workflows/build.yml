@@ -67,20 +67,42 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
+      - name: Check for cached WebRTC source
+        id: cache-webrtc
+        uses: actions/cache@v4
+        with:
+          path: |
+            webrtc-src.tar.zst
+            webrtc-src.tar.xz
+            webrtc-src.tar.gz
+          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
+          restore-keys: webrtc-source-
+          enableCrossOsArchive: true
+
+      - name: Skip fetch if cache hit
+        if: steps.cache-webrtc.outputs.cache-hit == 'true'
+        run: |
+          echo "WebRTC source already cached, skipping fetch"
+          ls -lh webrtc-src.tar.* 2>/dev/null || echo "No archive found"
+
       - name: Check disk space before cleanup
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           df -h /
           echo "=== Top directories ==="
           sudo du -h --max-depth=1 /usr/local /opt /home 2>/dev/null | sort -hr | head -15
 
       - name: Maximize GitHub runner space
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         uses: justinthelaw/maximize-github-runner-space@v0.9.0
 
       - name: Check disk space after cleanup
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           df -h /
 
       - name: Restore depot_tools
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: depot_tools
@@ -89,10 +111,12 @@ jobs:
           enableCrossOsArchive: true
 
       - name: Setup depot_tools path
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Fetch WebRTC source
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           cd ${{ github.workspace }}
           rm -rf webrtc-src .gclient
@@ -125,6 +149,7 @@ jobs:
           done
 
       - name: Compress WebRTC source
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           cd ${{ github.workspace }}
           if command -v zstd &> /dev/null; then
@@ -136,12 +161,14 @@ jobs:
           fi
 
       - name: Check disk space after compression
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           echo "=== Archive size ==="
           ls -lh webrtc-src.tar.* 2>/dev/null || echo "No archive found"
           df -h /
 
       - name: Save to cache
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: |
