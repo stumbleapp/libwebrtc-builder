@@ -79,12 +79,6 @@ jobs:
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Skip fetch if cache hit
-        if: steps.cache-webrtc.outputs.cache-hit == 'true'
-        run: |
-          echo "WebRTC source already cached, skipping fetch"
-          ls -lh webrtc-src.tar.* 2>/dev/null || echo "No archive found"
-
       - name: Check disk space before cleanup
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
@@ -152,13 +146,19 @@ jobs:
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           cd ${{ github.workspace }}
+          echo "Starting compression..."
+          ls -la webrtc-src/
           if command -v zstd &> /dev/null; then
-            tar -cf webrtc-src.tar webrtc-src && zstd -T0 -6 webrtc-src.tar -o webrtc-src.tar.zst && rm webrtc-src.tar
+            echo "Using zstd compression..."
+            tar -cf webrtc-src.tar webrtc-src
+            echo "Running zstd compression..."
+            zstd -T0 -6 webrtc-src.tar -o webrtc-src.tar.zst && rm webrtc-src.tar
           elif command -v xz &> /dev/null; then
             tar -I 'xz -7 -T0' -cf webrtc-src.tar.xz webrtc-src
           else
             tar -czf webrtc-src.tar.gz webrtc-src
           fi
+          ls -lh webrtc-src.tar.*
 
       - name: Check disk space after compression
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -200,12 +200,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.zst ]; then
-            zstd -d webrtc-src.tar.zst -o webrtc-src.tar && tar -xf webrtc-src.tar && rm webrtc-src.tar webrtc-src.tar.zst
+            echo "Decompressing webrtc-src.tar.zst..."
+            zstd -d webrtc-src.tar.zst -o webrtc-src.tar
+            echo "Extracting webrtc-src.tar..."
+            tar -xf webrtc-src.tar
+            rm -f webrtc-src.tar webrtc-src.tar.zst
           elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
+          ls -la webrtc-src/
 
       - name: Create headers artifact
         run: |
@@ -248,12 +253,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.zst ]; then
-            zstd -d webrtc-src.tar.zst -o webrtc-src.tar && tar -xf webrtc-src.tar && rm webrtc-src.tar webrtc-src.tar.zst
+            echo "Decompressing webrtc-src.tar.zst..."
+            zstd -d webrtc-src.tar.zst -o webrtc-src.tar
+            echo "Extracting webrtc-src.tar..."
+            tar -xf webrtc-src.tar
+            rm -f webrtc-src.tar webrtc-src.tar.zst
           elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
+          ls -la webrtc-src/
 
       - name: Checkout patches
         uses: actions/checkout@v4
@@ -422,12 +432,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.zst ]; then
-            zstd -d webrtc-src.tar.zst -o webrtc-src.tar && tar -xf webrtc-src.tar && rm webrtc-src.tar webrtc-src.tar.zst
+            echo "Decompressing webrtc-src.tar.zst..."
+            zstd -d webrtc-src.tar.zst -o webrtc-src.tar
+            echo "Extracting webrtc-src.tar..."
+            tar -xf webrtc-src.tar
+            rm -f webrtc-src.tar webrtc-src.tar.zst
           elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
+          ls -la webrtc-src/
 
       - name: Checkout patches
         uses: actions/checkout@v4
@@ -529,12 +544,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.zst ]; then
-            zstd -d webrtc-src.tar.zst -o webrtc-src.tar && tar -xf webrtc-src.tar && rm webrtc-src.tar webrtc-src.tar.zst
+            echo "Decompressing webrtc-src.tar.zst..."
+            zstd -d webrtc-src.tar.zst -o webrtc-src.tar
+            echo "Extracting webrtc-src.tar..."
+            tar -xf webrtc-src.tar
+            rm -f webrtc-src.tar webrtc-src.tar.zst
           elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
+          ls -la webrtc-src/
 
       - name: Checkout patches
         uses: actions/checkout@v4
@@ -650,12 +670,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           if [ -f webrtc-src.tar.zst ]; then
-            zstd -d webrtc-src.tar.zst -o webrtc-src.tar && tar -xf webrtc-src.tar && rm webrtc-src.tar webrtc-src.tar.zst
+            echo "Decompressing webrtc-src.tar.zst..."
+            zstd -d webrtc-src.tar.zst -o webrtc-src.tar
+            echo "Extracting webrtc-src.tar..."
+            tar -xf webrtc-src.tar
+            rm -f webrtc-src.tar webrtc-src.tar.zst
           elif [ -f webrtc-src.tar.xz ]; then
             tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
+          ls -la webrtc-src/
 
       - name: Checkout patches
         uses: actions/checkout@v4
@@ -835,8 +860,12 @@ jobs:
 
       - name: Decompress WebRTC source
         run: |
+          Write-Output "Current directory: $(Get-Location)"
+          Write-Output "Files in root: $(Get-ChildItem -Name)"
           if (Test-Path webrtc-src.tar.zst) {
+            Write-Output "Found webrtc-src.tar.zst, decompressing..."
             zstd -d webrtc-src.tar.zst -o webrtc-src.tar
+            Write-Output "Extracting webrtc-src.tar..."
             tar -xf webrtc-src.tar
             Remove-Item webrtc-src.tar, webrtc-src.tar.zst -Force -ErrorAction SilentlyContinue
           } elseif (Test-Path webrtc-src.tar.xz) {
@@ -846,6 +875,8 @@ jobs:
             tar -xzf webrtc-src.tar.gz
             Remove-Item webrtc-src.tar.gz -Force -ErrorAction SilentlyContinue
           }
+          Write-Output "Files after decompress: $(Get-ChildItem -Name)"
+          Write-Output "webrtc-src exists: $(Test-Path webrtc-src)"
 
       - name: Checkout patches
         uses: actions/checkout@v4
