@@ -111,6 +111,11 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src/src
+          gclient runhooks
+
       - name: Fetch WebRTC source
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
@@ -335,6 +340,11 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src/src
+          gclient runhooks
+
       - name: Build Android arm64
         run: |
           cd webrtc-src/src
@@ -529,6 +539,11 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src/src
+          gclient runhooks
+
       - name: Build iOS arm64
         run: |
           cd webrtc-src/src
@@ -656,6 +671,11 @@ jobs:
       - name: Setup depot_tools path
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src/src
+          gclient runhooks
 
       - name: Build macOS arm64
         run: |
@@ -811,6 +831,11 @@ jobs:
       - name: Setup depot_tools path
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+
+      - name: Initialize depot_tools
+        run: |
+          cd webrtc-src/src
+          gclient runhooks
 
       - name: Install sysroot
         run: |
@@ -1020,6 +1045,11 @@ jobs:
       - name: Setup depot_tools path
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
+
+      - name: Initialize depot_tools
+        run: |
+          Set-Location webrtc-src/src
+          gclient runhooks
 
       - name: Build Windows x64
         run: |
