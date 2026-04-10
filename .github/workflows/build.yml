@@ -71,7 +71,10 @@ jobs:
         id: cache-webrtc
         uses: actions/cache@v4
         with:
-          path: .cache-exists.do-not-download
+          path: |
+            webrtc-src.tar.zst
+            webrtc-src.tar.xz
+            webrtc-src.tar.gz
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
