@@ -328,6 +328,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           export ANDROID_SDK_ROOT="$PWD/third_party/android_sdk"
+          gclient sync --force
           gclient runhooks
 
       - name: Build Android arm64
