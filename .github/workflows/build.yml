@@ -345,7 +345,7 @@ jobs:
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_arm64
           gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
-          ninja -C out_arm64 -j16 sdk/android/libjingle_peerconnection_so
+          ninja -C out_arm64 -j16 sdk/android:libjingle_peerconnection_so
 
       - name: Create Android arm64 artifact
         run: |
@@ -372,7 +372,7 @@ jobs:
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_armv7
           gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
-          ninja -C out_armv7 -j16 sdk/android/libjingle_peerconnection_so
+          ninja -C out_armv7 -j16 sdk/android:libjingle_peerconnection_so
 
       - name: Create Android armv7 artifact
         run: |
@@ -399,7 +399,7 @@ jobs:
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_x64
           gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
-          ninja -C out_x64 -j16 sdk/android/libjingle_peerconnection_so
+          ninja -C out_x64 -j16 sdk/android:libjingle_peerconnection_so
 
       - name: Create Android x64 artifact
         run: |
@@ -426,7 +426,7 @@ jobs:
           export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk"
           mkdir -p out_x86
           gn gen out_x86 --args="target_os=\"android\" target_cpu=\"x86\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\""
-          ninja -C out_x86 -j16 sdk/android/libjingle_peerconnection_so
+          ninja -C out_x86 -j16 sdk/android:libjingle_peerconnection_so
 
       - name: Create Android x86 artifact
         run: |
@@ -451,6 +451,7 @@ jobs:
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     timeout-minutes: 240
+    enabled: false
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
@@ -584,6 +585,7 @@ jobs:
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     timeout-minutes: 240
+    enabled: false
     steps:
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
@@ -944,6 +946,7 @@ jobs:
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
     timeout-minutes: 240
+    enabled: false
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
