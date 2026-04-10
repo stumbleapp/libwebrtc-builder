@@ -190,6 +190,8 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
+          echo "Checking for archive files:"
+          ls -la webrtc-src.tar.* 2>/dev/null || echo "No archives found"
           if [ -f webrtc-src.tar.zst ]; then
             echo "Decompressing webrtc-src.tar.zst..."
             zstd -d webrtc-src.tar.zst -o webrtc-src.tar
@@ -201,7 +203,15 @@ jobs:
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
-          ls -la webrtc-src/
+          echo "Current directory: $(pwd)"
+          echo "Files in root:"
+          ls -la | head -20
+          if [ -d webrtc-src ]; then
+            echo "webrtc-src exists, contents:"
+            ls -la webrtc-src/
+          else
+            echo "webrtc-src NOT FOUND"
+          fi
 
       - name: Create headers artifact
         run: |
@@ -243,6 +253,8 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
+          echo "Checking for archive files:"
+          ls -la webrtc-src.tar.* 2>/dev/null || echo "No archives found"
           if [ -f webrtc-src.tar.zst ]; then
             echo "Decompressing webrtc-src.tar.zst..."
             zstd -d webrtc-src.tar.zst -o webrtc-src.tar
@@ -254,7 +266,15 @@ jobs:
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
-          ls -la webrtc-src/
+          echo "Current directory: $(pwd)"
+          echo "Files in root:"
+          ls -la | head -20
+          if [ -d webrtc-src ]; then
+            echo "webrtc-src exists, contents:"
+            ls -la webrtc-src/
+          else
+            echo "webrtc-src NOT FOUND"
+          fi
 
       - name: Checkout patches
         uses: actions/checkout@v4
@@ -660,6 +680,8 @@ jobs:
       - name: Decompress WebRTC source
         run: |
           cd ${{ github.workspace }}
+          echo "Checking for archive files:"
+          ls -la webrtc-src.tar.* 2>/dev/null || echo "No archives found"
           if [ -f webrtc-src.tar.zst ]; then
             echo "Decompressing webrtc-src.tar.zst..."
             zstd -d webrtc-src.tar.zst -o webrtc-src.tar
@@ -671,7 +693,15 @@ jobs:
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
-          ls -la webrtc-src/
+          echo "Current directory: $(pwd)"
+          echo "Files in root:"
+          ls -la | head -20
+          if [ -d webrtc-src ]; then
+            echo "webrtc-src exists, contents:"
+            ls -la webrtc-src/
+          else
+            echo "webrtc-src NOT FOUND"
+          fi
 
       - name: Checkout patches
         uses: actions/checkout@v4
