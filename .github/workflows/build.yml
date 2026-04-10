@@ -281,23 +281,6 @@ jobs:
             echo "webrtc-src NOT FOUND"
           fi
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Restore depot_tools
-        id: cache-depot-tools
-        uses: actions/cache@v5.0.4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          restore-keys: depot-tools-
-          enableCrossOsArchive: true
-
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
-
       - name: Checkout patches
         shell: bash
         run: |
@@ -335,6 +318,22 @@ jobs:
           apply_patch ${{ github.workspace }}/patches/android_use_libunwind.patch
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
           apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Restore depot_tools
+        id: cache-depot-tools
+        uses: actions/cache@v5.0.4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          restore-keys: depot-tools-
+          enableCrossOsArchive: true
+
+      - name: Setup depot_tools path
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Build Android arm64
         run: |
@@ -477,25 +476,6 @@ jobs:
           fi
           ls -la webrtc-src/
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: "latest-stable"
-
-      - name: Restore depot_tools
-        id: cache-depot-tools
-        uses: actions/cache@v5.0.4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          restore-keys: depot-tools-
-          enableCrossOsArchive: true
-
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
-
       - name: Checkout patches
         shell: bash
         run: |
@@ -530,6 +510,24 @@ jobs:
           }
           cd webrtc-src/src
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "latest-stable"
+
+      - name: Restore depot_tools
+        id: cache-depot-tools
+        uses: actions/cache@v5.0.4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          restore-keys: depot-tools-
+          enableCrossOsArchive: true
+
+      - name: Setup depot_tools path
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Build iOS arm64
         run: |
@@ -606,25 +604,6 @@ jobs:
           fi
           ls -la webrtc-src/
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: "latest-stable"
-
-      - name: Restore depot_tools
-        id: cache-depot-tools
-        uses: actions/cache@v5.0.4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          restore-keys: depot-tools-
-          enableCrossOsArchive: true
-
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
-
       - name: Checkout patches
         shell: bash
         run: |
@@ -659,6 +638,24 @@ jobs:
           }
           cd webrtc-src/src
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "latest-stable"
+
+      - name: Restore depot_tools
+        id: cache-depot-tools
+        uses: actions/cache@v5.0.4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          restore-keys: depot-tools-
+          enableCrossOsArchive: true
+
+      - name: Setup depot_tools path
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Build macOS arm64
         run: |
@@ -759,20 +756,6 @@ jobs:
             echo "webrtc-src NOT FOUND"
           fi
 
-      - name: Restore depot_tools
-        id: cache-depot-tools
-        uses: actions/cache@v5.0.4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          restore-keys: depot-tools-
-          enableCrossOsArchive: true
-
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
-
       - name: Checkout patches
         shell: bash
         run: |
@@ -815,6 +798,19 @@ jobs:
           apply_patch ${{ github.workspace }}/patches/4k.patch
           apply_patch ${{ github.workspace }}/patches/add_licenses.patch
           apply_patch ${{ github.workspace }}/patches/add_deps.patch
+
+      - name: Restore depot_tools
+        id: cache-depot-tools
+        uses: actions/cache@v5.0.4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          restore-keys: depot-tools-
+          enableCrossOsArchive: true
+
+      - name: Setup depot_tools path
+        run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Install sysroot
         run: |
@@ -972,20 +968,6 @@ jobs:
           Write-Output "Files after decompress: $(Get-ChildItem -Name)"
           Write-Output "webrtc-src exists: $(Test-Path webrtc-src)"
 
-      - name: Restore depot_tools
-        id: cache-depot-tools
-        uses: actions/cache@v5.0.4
-        with:
-          path: depot_tools
-          key: depot-tools-${{ needs.check-version.outputs.new_version }}
-          restore-keys: depot-tools-
-          enableCrossOsArchive: true
-
-      - name: Setup depot_tools path
-        run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
-
-
       - name: Checkout patches
         shell: pwsh
         run: |
@@ -1025,6 +1007,19 @@ jobs:
           Apply-Patch "${{ github.workspace }}\patches\windows_fix_abseil.patch"
           Apply-Patch "${{ github.workspace }}\patches\windows_fix_optional.patch"
           Apply-Patch "${{ github.workspace }}\patches\windows_add_deps.patch"
+
+      - name: Restore depot_tools
+        id: cache-depot-tools
+        uses: actions/cache@v5.0.4
+        with:
+          path: depot_tools
+          key: depot-tools-${{ needs.check-version.outputs.new_version }}
+          restore-keys: depot-tools-
+          enableCrossOsArchive: true
+
+      - name: Setup depot_tools path
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
 
       - name: Build Windows x64
         run: |
