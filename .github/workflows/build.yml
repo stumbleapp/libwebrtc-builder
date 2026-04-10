@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: Cache depot_tools
         id: cache-depot-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
@@ -69,7 +69,7 @@ jobs:
     steps:
       - name: Check for cached WebRTC source
         id: cache-webrtc
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -78,6 +78,7 @@ jobs:
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
+          lookup-only: true
 
       - name: Check disk space before cleanup
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -97,7 +98,7 @@ jobs:
 
       - name: Restore depot_tools
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
@@ -163,7 +164,7 @@ jobs:
 
       - name: Save to cache
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -180,7 +181,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -243,7 +244,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -297,7 +298,7 @@ jobs:
 
       - name: Restore depot_tools
         id: cache-depot-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
@@ -445,7 +446,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -491,7 +492,7 @@ jobs:
 
       - name: Restore depot_tools
         id: cache-depot-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
@@ -570,7 +571,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -616,7 +617,7 @@ jobs:
 
       - name: Restore depot_tools
         id: cache-depot-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
@@ -709,7 +710,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -760,7 +761,7 @@ jobs:
 
       - name: Restore depot_tools
         id: cache-depot-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
@@ -924,7 +925,7 @@ jobs:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
       - name: Restore WebRTC source
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: |
             webrtc-src.tar.zst
@@ -969,7 +970,7 @@ jobs:
 
       - name: Restore depot_tools
         id: cache-depot-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
