@@ -280,19 +280,6 @@ jobs:
             echo "webrtc-src NOT FOUND"
           fi
 
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-
-      - name: DEBUG - after checkout patches
-        run: |
-          echo "DEBUG: After checkout patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
@@ -309,11 +296,14 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
-      - name: DEBUG - check webrtc-src before Apply patches
-        run: |
-          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+      - name: Checkout patches
+        uses: actions/checkout@v5.0.1
+        with:
+          sparse-checkout: |
+            patches
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          clean: false
 
       - name: Apply patches
         run: |
@@ -472,19 +462,6 @@ jobs:
           fi
           ls -la webrtc-src/
 
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-
-      - name: DEBUG - after checkout patches
-        run: |
-          echo "DEBUG: After checkout patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
-
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -503,11 +480,14 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
-      - name: DEBUG - check webrtc-src before Apply patches
-        run: |
-          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+      - name: Checkout patches
+        uses: actions/checkout@v5.0.1
+        with:
+          sparse-checkout: |
+            patches
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          clean: false
 
       - name: Apply patches
         run: |
@@ -597,19 +577,6 @@ jobs:
           fi
           ls -la webrtc-src/
 
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-
-      - name: DEBUG - after checkout patches
-        run: |
-          echo "DEBUG: After checkout patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
-
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -628,11 +595,14 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
-      - name: DEBUG - check webrtc-src before Apply patches
-        run: |
-          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+      - name: Checkout patches
+        uses: actions/checkout@v5.0.1
+        with:
+          sparse-checkout: |
+            patches
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          clean: false
 
       - name: Apply patches
         run: |
@@ -746,19 +716,6 @@ jobs:
             echo "webrtc-src NOT FOUND"
           fi
 
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-
-      - name: DEBUG - after checkout patches
-        run: |
-          echo "DEBUG: After checkout patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
-
       - name: Restore depot_tools
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
@@ -772,11 +729,14 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
-      - name: DEBUG - check webrtc-src before Apply patches
-        run: |
-          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+      - name: Checkout patches
+        uses: actions/checkout@v5.0.1
+        with:
+          sparse-checkout: |
+            patches
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          clean: false
 
       - name: Apply patches
         run: |
@@ -955,19 +915,6 @@ jobs:
           Write-Output "Files after decompress: $(Get-ChildItem -Name)"
           Write-Output "webrtc-src exists: $(Test-Path webrtc-src)"
 
-      - name: Checkout patches
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-
-      - name: DEBUG - after checkout patches
-        run: |
-          echo "DEBUG: After checkout patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
-
       - name: Restore depot_tools
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
@@ -981,11 +928,14 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
 
-      - name: DEBUG - check webrtc-src before Apply patches
-        run: |
-          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
-          ls -la
-          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+      - name: Checkout patches
+        uses: actions/checkout@v5.0.1
+        with:
+          sparse-checkout: |
+            patches
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+          clean: false
 
       - name: Apply patches
         run: |
@@ -1140,7 +1090,7 @@ jobs:
           echo ${{ needs.check-version.outputs.new_version }} > .last-built-version
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5.0.1
         with:
           fetch-depth: 0
 
