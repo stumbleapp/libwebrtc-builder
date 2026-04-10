@@ -284,13 +284,15 @@ jobs:
           ls -la /tmp/webrtc-src/
 
       - name: Checkout patches
-        shell: bash
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} ${{ github.workspace }}
-          cd ${{ github.workspace }}
+          rm -rf /tmp/patches-temp
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
           git sparse-checkout set patches
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
-          ls -la
+          ls -la ${{ github.workspace }}/patches
 
       - name: Move webrtc source to workspace
         run: |
@@ -482,13 +484,15 @@ jobs:
           ls -la /tmp/webrtc-src/
 
       - name: Checkout patches
-        shell: bash
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} ${{ github.workspace }}
-          cd ${{ github.workspace }}
+          rm -rf /tmp/patches-temp
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
           git sparse-checkout set patches
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
-          ls -la
+          ls -la ${{ github.workspace }}/patches
 
       - name: Move webrtc source to workspace
         run: |
@@ -613,13 +617,15 @@ jobs:
           ls -la /tmp/webrtc-src/
 
       - name: Checkout patches
-        shell: bash
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} ${{ github.workspace }}
-          cd ${{ github.workspace }}
+          rm -rf /tmp/patches-temp
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
           git sparse-checkout set patches
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
-          ls -la
+          ls -la ${{ github.workspace }}/patches
 
       - name: Move webrtc source to workspace
         run: |
@@ -760,13 +766,15 @@ jobs:
           ls -la /tmp/webrtc-src/
 
       - name: Checkout patches
-        shell: bash
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} ${{ github.workspace }}
-          cd ${{ github.workspace }}
+          rm -rf /tmp/patches-temp
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
           git sparse-checkout set patches
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
-          ls -la
+          ls -la ${{ github.workspace }}/patches
 
       - name: Move webrtc source to workspace
         run: |
@@ -981,13 +989,15 @@ jobs:
           Get-ChildItem "$env:TEMP\webrtc-src"
 
       - name: Checkout patches
-        shell: pwsh
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} ${{ github.workspace }}
-          Set-Location "${{ github.workspace }}"
+          Remove-Item -Recurse -Force "$env:TEMP\patches-temp" -ErrorAction SilentlyContinue
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} "$env:TEMP\patches-temp"
+          Set-Location "$env:TEMP\patches-temp"
           git sparse-checkout set patches
+          Remove-Item -Recurse -Force "${{ github.workspace }}\patches" -ErrorAction SilentlyContinue
+          Move-Item -Force "$env:TEMP\patches-temp\patches" "${{ github.workspace }}\patches"
           Write-Output "After checkout:"
-          Get-ChildItem
+          Get-ChildItem "${{ github.workspace }}\patches"
 
       - name: Move webrtc source to workspace
         run: |
