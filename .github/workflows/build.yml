@@ -284,6 +284,13 @@ jobs:
         with:
           sparse-checkout: |
             patches
+          sparse-checkout-cone-mode: false
+
+      - name: DEBUG - after checkout patches
+        run: |
+          echo "DEBUG: After checkout patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
@@ -469,6 +476,13 @@ jobs:
         with:
           sparse-checkout: |
             patches
+          sparse-checkout-cone-mode: false
+
+      - name: DEBUG - after checkout patches
+        run: |
+          echo "DEBUG: After checkout patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -587,6 +601,13 @@ jobs:
         with:
           sparse-checkout: |
             patches
+          sparse-checkout-cone-mode: false
+
+      - name: DEBUG - after checkout patches
+        run: |
+          echo "DEBUG: After checkout patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -729,6 +750,13 @@ jobs:
         with:
           sparse-checkout: |
             patches
+          sparse-checkout-cone-mode: false
+
+      - name: DEBUG - after checkout patches
+        run: |
+          echo "DEBUG: After checkout patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Restore depot_tools
         id: cache-depot-tools
@@ -931,6 +959,13 @@ jobs:
         with:
           sparse-checkout: |
             patches
+          sparse-checkout-cone-mode: false
+
+      - name: DEBUG - after checkout patches
+        run: |
+          echo "DEBUG: After checkout patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Restore depot_tools
         id: cache-depot-tools
