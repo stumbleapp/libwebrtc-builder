@@ -55,6 +55,7 @@ jobs:
           path: depot_tools
           key: depot-tools-${{ needs.check-version.outputs.new_version }}
           enableCrossOsArchive: true
+          lookup-only: true
 
       - name: Install depot_tools
         if: steps.cache-depot-tools.outputs.cache-hit != 'true'
