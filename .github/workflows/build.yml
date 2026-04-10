@@ -112,6 +112,7 @@ jobs:
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Initialize depot_tools
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           cd webrtc-src/src
           gclient runhooks
