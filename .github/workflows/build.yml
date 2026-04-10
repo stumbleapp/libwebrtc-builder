@@ -301,6 +301,12 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+      - name: DEBUG - check webrtc-src before Apply patches
+        run: |
+          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+
       - name: Apply patches
         run: |
           apply_patch() {
@@ -482,6 +488,12 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+      - name: DEBUG - check webrtc-src before Apply patches
+        run: |
+          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
+
       - name: Apply patches
         run: |
           apply_patch() {
@@ -593,6 +605,12 @@ jobs:
       - name: Setup depot_tools path
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+
+      - name: DEBUG - check webrtc-src before Apply patches
+        run: |
+          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Apply patches
         run: |
@@ -724,6 +742,12 @@ jobs:
       - name: Setup depot_tools path
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+
+      - name: DEBUG - check webrtc-src before Apply patches
+        run: |
+          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Apply patches
         run: |
@@ -920,6 +944,12 @@ jobs:
       - name: Setup depot_tools path
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
+
+      - name: DEBUG - check webrtc-src before Apply patches
+        run: |
+          echo "DEBUG: Checking if webrtc-src exists before Apply patches"
+          ls -la
+          if [ -d "webrtc-src" ]; then echo "webrtc-src EXISTS"; ls -la webrtc-src/; else echo "webrtc-src NOT FOUND"; fi
 
       - name: Apply patches
         run: |
