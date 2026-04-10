@@ -297,14 +297,28 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+
       - name: Checkout patches
-        uses: actions/checkout@v5.0.1
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-          fetch-depth: 1
-          clean: false
+        shell: bash
+        run: |
+          # Save webrtc-src to temp before checkout (checkout deletes workspace)
+          if [ -d "webrtc-src" ]; then
+            cp -r webrtc-src /tmp/webrtc-src-backup
+          fi
+          # Now checkout patches (this will delete workspace contents)
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
+          git sparse-checkout set patches
+          cd ..
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
+          rm -rf /tmp/patches-temp
+          # Restore webrtc-src
+          if [ -d /tmp/webrtc-src-backup ]; then
+            cp -r /tmp/webrtc-src-backup ${{ github.workspace }}/webrtc-src
+          fi
+          echo "After checkout:"
+          ls -la
 
       - name: Apply patches
         run: |
@@ -481,14 +495,28 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+
       - name: Checkout patches
-        uses: actions/checkout@v5.0.1
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-          fetch-depth: 1
-          clean: false
+        shell: bash
+        run: |
+          # Save webrtc-src to temp before checkout (checkout deletes workspace)
+          if [ -d "webrtc-src" ]; then
+            cp -r webrtc-src /tmp/webrtc-src-backup
+          fi
+          # Now checkout patches (this will delete workspace contents)
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
+          git sparse-checkout set patches
+          cd ..
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
+          rm -rf /tmp/patches-temp
+          # Restore webrtc-src
+          if [ -d /tmp/webrtc-src-backup ]; then
+            cp -r /tmp/webrtc-src-backup ${{ github.workspace }}/webrtc-src
+          fi
+          echo "After checkout:"
+          ls -la
 
       - name: Apply patches
         run: |
@@ -596,14 +624,28 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+
       - name: Checkout patches
-        uses: actions/checkout@v5.0.1
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-          fetch-depth: 1
-          clean: false
+        shell: bash
+        run: |
+          # Save webrtc-src to temp before checkout (checkout deletes workspace)
+          if [ -d "webrtc-src" ]; then
+            cp -r webrtc-src /tmp/webrtc-src-backup
+          fi
+          # Now checkout patches (this will delete workspace contents)
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
+          git sparse-checkout set patches
+          cd ..
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
+          rm -rf /tmp/patches-temp
+          # Restore webrtc-src
+          if [ -d /tmp/webrtc-src-backup ]; then
+            cp -r /tmp/webrtc-src-backup ${{ github.workspace }}/webrtc-src
+          fi
+          echo "After checkout:"
+          ls -la
 
       - name: Apply patches
         run: |
@@ -730,14 +772,28 @@ jobs:
         run: |
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
+
       - name: Checkout patches
-        uses: actions/checkout@v5.0.1
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-          fetch-depth: 1
-          clean: false
+        shell: bash
+        run: |
+          # Save webrtc-src to temp before checkout (checkout deletes workspace)
+          if [ -d "webrtc-src" ]; then
+            cp -r webrtc-src /tmp/webrtc-src-backup
+          fi
+          # Now checkout patches (this will delete workspace contents)
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
+          cd /tmp/patches-temp
+          git sparse-checkout set patches
+          cd ..
+          rm -rf ${{ github.workspace }}/patches
+          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
+          rm -rf /tmp/patches-temp
+          # Restore webrtc-src
+          if [ -d /tmp/webrtc-src-backup ]; then
+            cp -r /tmp/webrtc-src-backup ${{ github.workspace }}/webrtc-src
+          fi
+          echo "After checkout:"
+          ls -la
 
       - name: Apply patches
         run: |
@@ -929,14 +985,28 @@ jobs:
         run: |
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
 
+
       - name: Checkout patches
-        uses: actions/checkout@v5.0.1
-        with:
-          sparse-checkout: |
-            patches
-          sparse-checkout-cone-mode: false
-          fetch-depth: 1
-          clean: false
+        shell: pwsh
+        run: |
+          # Save webrtc-src to temp before checkout (checkout deletes workspace)
+          if (Test-Path "webrtc-src") {
+            Copy-Item -Recurse -Force webrtc-src "$env:TEMP\webrtc-src-backup"
+          }
+          # Now checkout patches (this will delete workspace contents)
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} "$env:TEMP\patches-temp"
+          Set-Location "$env:TEMP\patches-temp"
+          git sparse-checkout set patches
+          Set-Location ..
+          Remove-Item -Recurse -Force "${{ github.workspace }}\patches" -ErrorAction SilentlyContinue
+          Move-Item -Force "$env:TEMP\patches-temp\patches" "${{ github.workspace }}\patches"
+          Remove-Item -Recurse -Force "$env:TEMP\patches-temp"
+          # Restore webrtc-src
+          if (Test-Path "$env:TEMP\webrtc-src-backup") {
+            Copy-Item -Recurse -Force "$env:TEMP\webrtc-src-backup" "${{ github.workspace }}\webrtc-src"
+          }
+          Write-Output "After checkout:"
+          Get-ChildItem
 
       - name: Apply patches
         run: |
