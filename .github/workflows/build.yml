@@ -81,21 +81,9 @@ jobs:
           enableCrossOsArchive: true
           lookup-only: true
 
-      - name: Check disk space before cleanup
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        run: |
-          df -h /
-          echo "=== Top directories ==="
-          sudo du -h --max-depth=1 /usr/local /opt /home 2>/dev/null | sort -hr | head -15
-
       - name: Maximize GitHub runner space
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         uses: justinthelaw/maximize-github-runner-space@v0.9.0
-
-      - name: Check disk space after cleanup
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        run: |
-          df -h /
 
       - name: Restore depot_tools
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -109,7 +97,7 @@ jobs:
       - name: Setup depot_tools path
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
-          export PATH="${{ github.workspace }}/depot_tools:$PATH"
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
 
       - name: Fetch WebRTC source
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -147,13 +135,6 @@ jobs:
           else
             tar -czf webrtc-src.tar.gz webrtc-src
           fi
-
-      - name: Check disk space after compression
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        run: |
-          echo "=== Archive size ==="
-          ls -lh webrtc-src.tar.* 2>/dev/null || echo "No archive found"
-          df -h /
 
   package-headers:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
@@ -296,7 +277,7 @@ jobs:
 
       - name: Initialize depot_tools
         run: |
-          export PATH="${{ github.workspace }}/depot_tools:$PATH"
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for Android
@@ -797,7 +778,7 @@ jobs:
 
       - name: Initialize depot_tools
         run: |
-          export PATH="${{ github.workspace }}/depot_tools:$PATH"
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for Linux
@@ -806,15 +787,9 @@ jobs:
           
           gclient sync --force
           gclient runhooks
-
-      - name: Install sysroot
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          chmod +x build/linux/sysroot_scripts/install-sysroot.py          
-          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
-          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=arm
-          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
-          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=i386
+          
+          # Install sysroots for all architectures
+          python3 build/linux/sysroot_scripts/install-sysroot.py --all
 
       - name: Build Linux arm64
         run: |
