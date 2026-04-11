@@ -155,18 +155,6 @@ jobs:
           ls -lh webrtc-src.tar.* 2>/dev/null || echo "No archive found"
           df -h /
 
-      - name: Save to cache
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        uses: actions/cache@v5.0.4
-        with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
-          key: webrtc-source-${{ needs.check-version.outputs.new_version }}
-          restore-keys: webrtc-source-
-          enableCrossOsArchive: true
-
   package-headers:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
