@@ -294,7 +294,7 @@ jobs:
           . build/android/envsetup.sh
           
           mkdir -p out_arm64
-          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_build_examples=false rtc_build_tools=false rtc_enable_protobuf=false"
+          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false unwindlib=\"libunwind\""
           ninja -C out_arm64
           ninja -C out_arm64 native_api
 
@@ -323,7 +323,7 @@ jobs:
           . build/android/envsetup.sh
           
           mkdir -p out_armv7
-          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_build_examples=false rtc_build_tools=false rtc_enable_protobuf=false arm_version=7"
+          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false arm_version=7 unwindlib=\"libunwind\""
           ninja -C out_armv7
           ninja -C out_armv7 native_api
 
@@ -352,7 +352,7 @@ jobs:
           . build/android/envsetup.sh
           
           mkdir -p out_x64
-          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_build_examples=false rtc_build_tools=false rtc_enable_protobuf=false"
+          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false unwindlib=\"libunwind\""
           ninja -C out_x64
           ninja -C out_x64 native_api
 
@@ -381,7 +381,7 @@ jobs:
           . build/android/envsetup.sh
           
           mkdir -p out_x86
-          gn gen out_x86 --args="target_os=\"android\" target_cpu=\"x86\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_build_examples=false rtc_build_tools=false rtc_enable_protobuf=false"
+          gn gen out_x86 --args="target_os=\"android\" target_cpu=\"x86\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false unwindlib=\"libunwind\""
           ninja -C out_x86
           ninja -C out_x86 native_api
 
