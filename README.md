@@ -15,7 +15,7 @@ Built from source every week.
 
 - 🍎 iOS — `.xcframework` — arm64, x64
 - 🖥️ macOS — `.framework` + `.a` — arm64, x64
-- 🤖 Android — `.a` — arm64, armv7, x64, x86
+- 🤖 Android — `.aar` — arm64, armv7, x64, x86
 - 🪟 Windows — `.lib` — x64, x86
 - 🐧 Linux — `.a` — arm64, armv7, x64, x86
 
@@ -51,14 +51,8 @@ curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${V
 # macOS x64
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-macos-x64-${VERSION}.zip
 
-# Android arm64
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-arm64-${VERSION}.zip
-# Android armv7
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-armv7-${VERSION}.zip
-# Android x64
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-x64-${VERSION}.zip
-# Android x86
-curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-x86-${VERSION}.zip
+# Android (arm64, armv7, x64, x86)
+curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-android-${VERSION}.zip
 
 # Windows x64
 curl -LOJ https://github.com/stumbleapp/libwebrtc-builder/releases/download/v${VERSION}/libwebrtc-win-x64-${VERSION}.zip
@@ -107,13 +101,24 @@ pod 'libWebRTC', :git => 'https://github.com/stumbleapp/libwebrtc-builder'
 
 ## Credits
 
+#### Source, Tools and Patches
+
 - [WebRTC](https://webrtc.org/) - Core library
 - [Chromium](https://www.chromium.org/) - Build system and dependencies
 - [depot_tools](https://chromium.googlesource.com/chromium/tools/depot_tools) - Build tools
 - [libwebrtc-bin](https://github.com/crow-misia/libwebrtc-bin) - Build scripts and patches
 - [shiguredo](https://github.com/shiguredo) - Original patch sources
-- [GitHub Actions](https://github.com/features/actions) - CI/CD platform
-- [setup-xcode](https://github.com/maxim-latest/setup-xcode) - Xcode version management
+
+#### GitHub Actions
+- [actions/cache](https://github.com/actions/cache) - Caching dependencies
+- [actions/upload-artifact](https://github.com/actions/upload-artifact) - Upload build artifacts
+- [actions/download-artifact](https://github.com/actions/download-artifact) - Download build artifacts
+- [actions/checkout](https://github.com/actions/checkout) - Repository checkout
+- [android-actions/setup-android](https://github.com/android-actions/setup-android) - Android SDK setup
+- [maxim-lobanov/setup-xcode](https://github.com/maxim-latest/setup-xcode) - Xcode version management
+- [softprops/action-gh-release](https://github.com/softprops/action-gh-release) - GitHub releases
+- [stefanzweifel/git-auto-commit-action](https://github.com/stefanzweifel/git-auto-commit-action) - Auto-commit changes
+- [justinthelaw/maximize-github-runner-space](https://github.com/justinthelaw/maximize-github-runner-space) - Maximize runner disk space
 
 ---
 

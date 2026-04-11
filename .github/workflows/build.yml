@@ -287,121 +287,48 @@ jobs:
           gclient sync --force
           gclient runhooks
 
-      - name: Build Android arm64
+      - name: Build Android AAR
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
           . build/android/envsetup.sh
           
-          mkdir -p out_arm64
-          gn gen out_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false unwindlib=\"libunwind\""
-          ninja -C out_arm64
-          ninja -C out_arm64 native_api
+          mkdir -p out
+          python3 tools_webrtc/android/build_aar.py \
+            --build-dir out \
+            --output out/libwebrtc.aar \
+            --arch armeabi-v7a arm64-v8a x86 x86_64 \
+            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
 
-      - name: Create Android arm64 artifact
+      - name: Create Android artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-arm64-${VERSION}/lib/arm64-v8a
-          cd out_arm64/obj
-          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-arm64-${VERSION}/lib/arm64-v8a/libwebrtc-arm64-v8a.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-arm64-${VERSION}/lib/arm64-v8a/libwebrtc-arm64-v8a.a
-          cd ../../..
-          zip -r -0 libwebrtc-android-arm64-${VERSION}.zip output-arm64-${VERSION}/lib
+          mkdir -p output-android-${VERSION}
+          unzip -q out/libwebrtc.aar -d out/aar_extracted
+          mkdir -p output-android-${VERSION}/lib/arm64-v8a
+          mkdir -p output-android-${VERSION}/lib/armeabi-v7a
+          mkdir -p output-android-${VERSION}/lib/x86_64
+          mkdir -p output-android-${VERSION}/lib/x86
+          cp out/aar_extracted/libs/arm64-v8a/*.so output-android-${VERSION}/lib/arm64-v8a/
+          cp out/aar_extracted/libs/armeabi-v7a/*.so output-android-${VERSION}/lib/armeabi-v7a/
+          cp out/aar_extracted/libs/x86_64/*.so output-android-${VERSION}/lib/x86_64/
+          cp out/aar_extracted/libs/x86/*.so output-android-${VERSION}/lib/x86/
+          cp out/aar_extracted/classes.jar output-android-${VERSION}/libwebrtc.jar
+          cp -r out/aar_extracted/* output-android-${VERSION}/include/ 2>/dev/null || true
+          cd output-android-${VERSION}
+          zip -r ../libwebrtc-android-${VERSION}.zip lib include libwebrtc.jar
 
-      - name: Upload Android arm64 artifact
+      - name: Upload Android artifact
         uses: actions/upload-artifact@v6
         with:
-          name: android-arm64
-          path: webrtc-src/src/libwebrtc-android-arm64-*.zip
+          name: android
+          path: webrtc-src/src/libwebrtc-android-*.zip
 
-      - name: Build Android armv7
+      - name: Cleanup Android build
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          
-          . build/android/envsetup.sh
-          
-          mkdir -p out_armv7
-          gn gen out_armv7 --args="target_os=\"android\" target_cpu=\"arm\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false arm_version=7 unwindlib=\"libunwind\""
-          ninja -C out_armv7
-          ninja -C out_armv7 native_api
-
-      - name: Create Android armv7
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-armv7-${VERSION}/lib/armeabi-v7a
-          cd out_armv7/obj
-          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-armv7-${VERSION}/lib/armeabi-v7a/libwebrtc-armeabi-v7a.a
-          cd ../../..
-          zip -r -0 libwebrtc-android-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
-
-      - name: Upload Android armv7 artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: android-armv7
-          path: webrtc-src/src/libwebrtc-android-armv7-*.zip
-
-      - name: Build Android x64
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          
-          . build/android/envsetup.sh
-          
-          mkdir -p out_x64
-          gn gen out_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false unwindlib=\"libunwind\""
-          ninja -C out_x64
-          ninja -C out_x64 native_api
-
-      - name: Create Android x64 artifact
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x64-${VERSION}/lib/x86_64
-          cd out_x64/obj
-          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-x64-${VERSION}/lib/x86_64/libwebrtc-x86_64.a
-          cd ../../..
-          zip -r -0 libwebrtc-android-x64-${VERSION}.zip output-x64-${VERSION}/lib
-
-      - name: Upload Android x64 artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: android-x64
-          path: webrtc-src/src/libwebrtc-android-x64-*.zip
-
-      - name: Build Android x86
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          
-          . build/android/envsetup.sh
-          
-          mkdir -p out_x86
-          gn gen out_x86 --args="target_os=\"android\" target_cpu=\"x86\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false unwindlib=\"libunwind\""
-          ninja -C out_x86
-          ninja -C out_x86 native_api
-
-      - name: Create Android x86 artifact
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x86-${VERSION}/lib/x86
-          cd out_x86/obj
-          find . -name '*.o' -not -path '*/sdk/android/*' | head -10
-          /usr/bin/ar -rc ../../../output-x86-${VERSION}/lib/x86/libwebrtc-x86.a `find . -name '*.o' | grep -v sdk/android`
-          test -f ../../../output-x86-${VERSION}/lib/x86/libwebrtc-x86.a
-          cd ../../..
-          zip -r -0 libwebrtc-android-x86-${VERSION}.zip output-x86-${VERSION}/lib
-
-      - name: Upload Android x86 artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: android-x86
-          path: webrtc-src/src/libwebrtc-android-x86-*.zip
+          rm -rf out out_arm64 out_armv7 out_x64 out_x86 output-android-*
 
   build-ios:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
