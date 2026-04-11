@@ -135,14 +135,6 @@ jobs:
             echo "Fetch failed after 10 retries"
             exit 1
           fi
-          cd src
-          for i in 1 2 3 4 5 6 7 8 9 10; do
-            if gclient sync; then
-              break
-            fi
-            echo "Sync failed, retry $i/10..."
-            sleep $((60 * 2 ** (i - 1)))
-          done
 
       - name: Compress WebRTC source
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -207,15 +199,6 @@ jobs:
             tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
           elif [ -f webrtc-src.tar.gz ]; then
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
-          fi
-          echo "Current directory: $(pwd)"
-          echo "Files in root:"
-          ls -la | head -20
-          if [ -d webrtc-src ]; then
-            echo "webrtc-src exists, contents:"
-            ls -la webrtc-src/
-          else
-            echo "webrtc-src NOT FOUND"
           fi
 
       - name: Create headers artifact
@@ -320,15 +303,17 @@ jobs:
           restore-keys: depot-tools-
           enableCrossOsArchive: true
 
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
       - name: Initialize depot_tools
         run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
+          
+          # Configure gclient for Android
+          echo 'target_os = ["android"]' > ../.gclient
+          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          
           export ANDROID_SDK_ROOT="$PWD/third_party/android_sdk"
-          gclient sync --force
+          gclient sync --force --with_android_sdk
           gclient runhooks
 
       - name: Build Android arm64
@@ -529,13 +514,16 @@ jobs:
           restore-keys: depot-tools-
           enableCrossOsArchive: true
 
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
       - name: Initialize depot_tools
         run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
+          
+          # Configure gclient for iOS
+          echo 'target_os = ["ios"]' > ../.gclient
+          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          
+          gclient sync --force
           gclient runhooks
 
       - name: Build iOS arm64
@@ -662,13 +650,16 @@ jobs:
           restore-keys: depot-tools-
           enableCrossOsArchive: true
 
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
       - name: Initialize depot_tools
         run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
+          
+          # Configure gclient for macOS
+          echo 'target_os = ["mac"]' > ../.gclient
+          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          
+          gclient sync --force
           gclient runhooks
 
       - name: Build macOS arm64
@@ -814,13 +805,16 @@ jobs:
           restore-keys: depot-tools-
           enableCrossOsArchive: true
 
-      - name: Setup depot_tools path
-        run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-
       - name: Initialize depot_tools
         run: |
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
+          
+          # Configure gclient for Linux
+          echo 'target_os = ["linux"]' > ../.gclient
+          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          
+          gclient sync --force
           gclient runhooks
 
       - name: Install sysroot
@@ -1034,13 +1028,16 @@ jobs:
           restore-keys: depot-tools-
           enableCrossOsArchive: true
 
-      - name: Setup depot_tools path
-        run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
-
       - name: Initialize depot_tools
         run: |
+          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
           Set-Location "${{ github.workspace }}/webrtc-src/src"
+          
+          # Configure gclient for Windows
+          "target_os = [`win`]" | Out-File -FilePath ../.gclient -Encoding ASCII
+          "solutions = [{`name`: `src`, `url`: `https://webrtc.googlesource.com/src.git`, `deps_file`: `DEPS`, `managed`: False}]" | Out-File -FilePath ../.gclient -Append -Encoding ASCII
+          
+          gclient sync --force
           gclient runhooks
 
       - name: Build Windows x64
