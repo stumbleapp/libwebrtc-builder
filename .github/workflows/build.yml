@@ -109,7 +109,7 @@ jobs:
       - name: Setup depot_tools path
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
-          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
+          export PATH="${{ github.workspace }}/depot_tools:$PATH"
 
       - name: Fetch WebRTC source
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
