@@ -277,6 +277,7 @@ jobs:
 
       - name: Initialize depot_tools
         run: |
+          export PATH="${{ github.workspace }}/depot_tools:$PATH"
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
           
@@ -488,6 +489,7 @@ jobs:
       - name: Initialize depot_tools
         run: |
           export PATH="${{ github.workspace }}/depot_tools:$PATH"
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for iOS
@@ -624,6 +626,7 @@ jobs:
       - name: Initialize depot_tools
         run: |
           export PATH="${{ github.workspace }}/depot_tools:$PATH"
+          echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for macOS
@@ -778,6 +781,7 @@ jobs:
 
       - name: Initialize depot_tools
         run: |
+          export PATH="${{ github.workspace }}/depot_tools:$PATH"
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
           cd ${{ github.workspace }}/webrtc-src/src
           
@@ -996,6 +1000,7 @@ jobs:
       - name: Initialize depot_tools
         run: |
           $env:PATH = "${{ github.workspace }}\depot_tools;" + $env:PATH
+          Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           
           # Configure gclient for Windows
