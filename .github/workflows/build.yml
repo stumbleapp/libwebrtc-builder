@@ -258,7 +258,6 @@ jobs:
             fi
           }
           cd ${{ github.workspace }}/webrtc-src/src
-          apply_patch ${{ github.workspace }}/patches/android_version.patch
           apply_patch ${{ github.workspace }}/patches/android_use_libunwind.patch
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
           apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
