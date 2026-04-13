@@ -337,12 +337,13 @@ jobs:
             esac
             
             echo "Building $arch ($cpu)..."
-            gn gen out/static_$arch --args="target_os=\"android\" target_cpu=\"$cpu\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $extra_args" 2>/dev/null || true
-            ninja -C out/static_$arch 2>/dev/null || true
-            ninja -C out/static_$arch native_api 2>/dev/null || true
+            mkdir -p out/static/$arch
+            gn gen out/static/$arch --args="target_os=\"android\" target_cpu=\"$cpu\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $extra_args" 2>/dev/null || true
+            ninja -C out/static/$arch 2>/dev/null || true
+            ninja -C out/static/$arch native_api 2>/dev/null || true
             
             echo "Creating static library for $arch..."
-            cd out/static_$arch/obj
+            cd out/static/$arch/obj
             rm -f sdk/android/libjingle_peerconnection_so/jni_onload.o 2>/dev/null || true
             ${{ github.workspace }}/webrtc-src/src/third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../libwebrtc.a `find . -name '*.o'` 2>/dev/null || true
             cd ${{ github.workspace }}/webrtc-src/src
@@ -383,20 +384,42 @@ jobs:
             cp out/aar_extracted/classes.jar output-android-${VERSION}/libwebrtc.jar
           fi
           
-          rsync -amv '--include=*/' '--include=*.h' '--include=*.hpp' '--include=*.inc' '--exclude=*' . output-android-${VERSION}/include/ 2>/dev/null || true
-          rm -rf output-android-${VERSION}/include/rtc_tools 2>/dev/null || true
-          rm -rf output-android-${VERSION}/include/.git 2>/dev/null || true
+          rsync -amv \
+            --include='*/' \
+            --include='*.h' \
+            --include='*.hpp' \
+            --include='*.inc' \
+            --exclude='*' \
+            api/ \
+            common_audio/include/ \
+            media/base/ \
+            media/engine/ \
+            modules/audio_coding/include/ \
+            modules/audio_device/include/ \
+            modules/audio_processing/include/ \
+            modules/congestion_controller/include/ \
+            modules/include/ \
+            modules/rtp_rtcp/include/ \
+            modules/rtp_rtcp/source/ \
+            modules/utility/include/ \
+            modules/video_coding/codecs/h264/include/ \
+            modules/video_coding/codecs/vp8/include/ \
+            modules/video_coding/codecs/vp9/include/ \
+            modules/video_coding/include/ \
+            pc/ \
+            rtc_base/ \
+            system_wrappers/include/ \
+            output-android-${VERSION}/include/ 2>/dev/null || true
           
-          if [ -f out/LICENSE.md ]; then
-            cp out/LICENSE.md output-android-${VERSION}/NOTICE
-          else
-            cp LICENSE.md output-android-${VERSION}/NOTICE 2>/dev/null || true
-          fi
+          cp LICENSE.md output-android-${VERSION}/NOTICE 2>/dev/null || true
           
-          echo '${{ needs.check-version.outputs.new_version }}' > output-android-${VERSION}/VERSION
+          echo "${{ needs.check-version.outputs.new_version }}" > output-android-${VERSION}/VERSION
           
           cd output-android-${VERSION}
-          zip -r ../libwebrtc-android-${VERSION}.zip lib include libwebrtc.jar NOTICE VERSION
+          zip -r ../libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION
+          if [ -d include ] && [ "$(ls -A include 2>/dev/null)" ]; then
+            zip -r ../libwebrtc-android-${VERSION}.zip include
+          fi
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v6
