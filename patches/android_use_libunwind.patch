@@ -14,7 +14,7 @@ index 265d4bc07..71ec29437 100644
 diff --git a/buildtools/third_party/libunwind/BUILD.gn b/buildtools/third_party/libunwind/BUILD.gn
 --- a/buildtools/third_party/libunwind/BUILD.gn
 +++ b/buildtools/third_party/libunwind/BUILD.gn
-@@ -20,7 +20,10 @@
+@@ -20,7 +20,11 @@
  }
  
  source_set("libunwind") {
@@ -25,4 +25,5 @@ diff --git a/buildtools/third_party/libunwind/BUILD.gn b/buildtools/third_party/
 +  ]
    if (is_android) {
      visibility += [ "//services/tracing/public/cpp" ]
++    libs += [ "unwind" ]
    }
