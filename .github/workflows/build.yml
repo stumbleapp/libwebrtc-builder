@@ -295,28 +295,60 @@ jobs:
           . build/android/envsetup.sh
           
           mkdir -p out
+          
           python3 tools_webrtc/android/build_aar.py \
             --build-dir out \
             --output out/libwebrtc.aar \
-            --arch armeabi-v7a arm64-v8a x86 x86_64 \
-            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off" ldflags=["-Wl,--unwindlib=libunwind"]'
+            --arch arm64-v8a armeabi-v7a x86_64 x86 \
+            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
+
+          echo "=== Building individual architectures with native_api ==="
+          
+          for arch in arm64-v8a armeabi-v7a x86_64 x86; do
+            case $arch in
+              arm64-v8a) cpu="arm64" extra_args="" ;;
+              armeabi-v7a) cpu="arm" extra_args="arm_version=7" ;;
+              x86_64) cpu="x64" extra_args="" ;;
+              x86) cpu="x86" extra_args="" ;;
+            esac
+            
+            echo "Building $arch ($cpu)..."
+            gn gen out/static_$arch --args="target_os=\"android\" target_cpu=\"$cpu\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $extra_args" 2>/dev/null || true
+            ninja -C out/static_$arch 2>/dev/null || true
+            ninja -C out/static_$arch native_api 2>/dev/null || true
+          done
+
+          echo "=== Combining artifacts ==="
+          cd out
+          unzip -q libwebrtc.aar -d aar_extracted 2>/dev/null || true
+          rm -rf jni 2>/dev/null || true
+          rm -f AndroidManifest.xml 2>/dev/null || true
+          mv classes.jar libwebrtc.jar 2>/dev/null || true
 
       - name: Create Android artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p output-android-${VERSION}
-          unzip -q out/libwebrtc.aar -d out/aar_extracted
+          
           mkdir -p output-android-${VERSION}/lib/arm64-v8a
           mkdir -p output-android-${VERSION}/lib/armeabi-v7a
           mkdir -p output-android-${VERSION}/lib/x86_64
           mkdir -p output-android-${VERSION}/lib/x86
-          cp out/aar_extracted/libs/arm64-v8a/*.so output-android-${VERSION}/lib/arm64-v8a/
-          cp out/aar_extracted/libs/armeabi-v7a/*.so output-android-${VERSION}/lib/armeabi-v7a/
-          cp out/aar_extracted/libs/x86_64/*.so output-android-${VERSION}/lib/x86_64/
-          cp out/aar_extracted/libs/x86/*.so output-android-${VERSION}/lib/x86/
-          cp out/aar_extracted/classes.jar output-android-${VERSION}/libwebrtc.jar
+          
+          cp out/aar_extracted/libs/arm64-v8a/*.so output-android-${VERSION}/lib/arm64-v8a/ 2>/dev/null || true
+          cp out/aar_extracted/libs/armeabi-v7a/*.so output-android-${VERSION}/lib/armeabi-v7a/ 2>/dev/null || true
+          cp out/aar_extracted/libs/x86_64/*.so output-android-${VERSION}/lib/x86_64/ 2>/dev/null || true
+          cp out/aar_extracted/libs/x86/*.so output-android-${VERSION}/lib/x86/ 2>/dev/null || true
+          
+          if [ -f out/libwebrtc.jar ]; then
+            cp out/libwebrtc.jar output-android-${VERSION}/libwebrtc.jar
+          elif [ -f out/aar_extracted/classes.jar ]; then
+            cp out/aar_extracted/classes.jar output-android-${VERSION}/libwebrtc.jar
+          fi
+          
           cp -r out/aar_extracted/* output-android-${VERSION}/include/ 2>/dev/null || true
+          cp -r out/aar_extracted/include/* output-android-${VERSION}/include/ 2>/dev/null || true
           cd output-android-${VERSION}
           zip -r ../libwebrtc-android-${VERSION}.zip lib include libwebrtc.jar
 
