@@ -247,21 +247,6 @@ jobs:
           echo "webrtc-src moved to workspace:"
           ls -la ${{ github.workspace }}/webrtc-src/
 
-      - name: Apply patches
-        run: |
-          apply_patch() {
-            local patch=$1
-            if patch -p1 < "$patch" 2>&1; then
-              echo "✓ Applied: $(basename $patch)"
-            else
-              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
-            fi
-          }
-          cd ${{ github.workspace }}/webrtc-src/src
-          apply_patch ${{ github.workspace }}/patches/android_use_libunwind.patch
-          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
-          apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
 
@@ -287,10 +272,26 @@ jobs:
           gclient sync --force
           gclient runhooks
 
+      - name: Apply patches
+        run: |
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
+          cd ${{ github.workspace }}/webrtc-src/src
+          apply_patch ${{ github.workspace }}/patches/android_use_libunwind.patch
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+          apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
+
       - name: Build Android AAR
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
+          chmod +x build/android/envsetup.sh
           . build/android/envsetup.sh
           
           mkdir -p out
@@ -298,7 +299,7 @@ jobs:
             --build-dir out \
             --output out/libwebrtc.aar \
             --arch armeabi-v7a arm64-v8a x86 x86_64 \
-            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
+            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off" ldflags=["-Wl,--unwindlib=libunwind"]'
 
       - name: Create Android artifact
         run: |
@@ -620,7 +621,7 @@ jobs:
 
   build-linux:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
