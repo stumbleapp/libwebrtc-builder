@@ -174,14 +174,38 @@ jobs:
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p headers-output
-          cp -r webrtc-src/src/api/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/common_audio/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/common_video/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/modules/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/sdk/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/rtc_base/* headers-output/ 2>/dev/null || true
-          cp -r webrtc-src/src/rtc_tools/* headers-output/ 2>/dev/null || true
+          
+          rsync -amv \
+            --include='*/' \
+            --include='*.h' \
+            --include='*.hpp' \
+            --include='*.inc' \
+            --include='BUILD.gn' \
+            --include='*.gni' \
+            --exclude='*' \
+            webrtc-src/src/api/ \
+            webrtc-src/src/common_audio/include/ \
+            webrtc-src/src/media/base/ \
+            webrtc-src/src/media/engine/ \
+            webrtc-src/src/modules/audio_coding/include/ \
+            webrtc-src/src/modules/audio_device/include/ \
+            webrtc-src/src/modules/audio_processing/include/ \
+            webrtc-src/src/modules/congestion_controller/include/ \
+            webrtc-src/src/modules/include/ \
+            webrtc-src/src/modules/rtp_rtcp/include/ \
+            webrtc-src/src/modules/rtp_rtcp/source/ \
+            webrtc-src/src/modules/utility/include/ \
+            webrtc-src/src/modules/video_coding/codecs/h264/include/ \
+            webrtc-src/src/modules/video_coding/codecs/vp8/include/ \
+            webrtc-src/src/modules/video_coding/codecs/vp9/include/ \
+            webrtc-src/src/modules/video_coding/include/ \
+            webrtc-src/src/pc/ \
+            webrtc-src/src/rtc_base/ \
+            webrtc-src/src/system_wrappers/include/ \
+            headers-output/
+          
           cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/ 2>/dev/null || true
+          
           zip -r -0 libwebrtc-headers-${VERSION}.zip headers-output
 
       - name: Upload headers artifact
@@ -316,6 +340,12 @@ jobs:
             gn gen out/static_$arch --args="target_os=\"android\" target_cpu=\"$cpu\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $extra_args" 2>/dev/null || true
             ninja -C out/static_$arch 2>/dev/null || true
             ninja -C out/static_$arch native_api 2>/dev/null || true
+            
+            echo "Creating static library for $arch..."
+            cd out/static_$arch/obj
+            rm -f sdk/android/libjingle_peerconnection_so/jni_onload.o 2>/dev/null || true
+            ${{ github.workspace }}/webrtc-src/src/third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../libwebrtc.a `find . -name '*.o'` 2>/dev/null || true
+            cd ${{ github.workspace }}/webrtc-src/src
           done
 
           echo "=== Combining artifacts ==="
@@ -335,6 +365,12 @@ jobs:
           mkdir -p output-android-${VERSION}/lib/armeabi-v7a
           mkdir -p output-android-${VERSION}/lib/x86_64
           mkdir -p output-android-${VERSION}/lib/x86
+          mkdir -p output-android-${VERSION}/include
+          
+          cp out/static/arm64-v8a/libwebrtc.a output-android-${VERSION}/lib/arm64-v8a/ 2>/dev/null || true
+          cp out/static/armeabi-v7a/libwebrtc.a output-android-${VERSION}/lib/armeabi-v7a/ 2>/dev/null || true
+          cp out/static/x86_64/libwebrtc.a output-android-${VERSION}/lib/x86_64/ 2>/dev/null || true
+          cp out/static/x86/libwebrtc.a output-android-${VERSION}/lib/x86/ 2>/dev/null || true
           
           cp out/aar_extracted/libs/arm64-v8a/*.so output-android-${VERSION}/lib/arm64-v8a/ 2>/dev/null || true
           cp out/aar_extracted/libs/armeabi-v7a/*.so output-android-${VERSION}/lib/armeabi-v7a/ 2>/dev/null || true
@@ -347,10 +383,20 @@ jobs:
             cp out/aar_extracted/classes.jar output-android-${VERSION}/libwebrtc.jar
           fi
           
-          cp -r out/aar_extracted/* output-android-${VERSION}/include/ 2>/dev/null || true
-          cp -r out/aar_extracted/include/* output-android-${VERSION}/include/ 2>/dev/null || true
+          rsync -amv '--include=*/' '--include=*.h' '--include=*.hpp' '--include=*.inc' '--exclude=*' . output-android-${VERSION}/include/ 2>/dev/null || true
+          rm -rf output-android-${VERSION}/include/rtc_tools 2>/dev/null || true
+          rm -rf output-android-${VERSION}/include/.git 2>/dev/null || true
+          
+          if [ -f out/LICENSE.md ]; then
+            cp out/LICENSE.md output-android-${VERSION}/NOTICE
+          else
+            cp LICENSE.md output-android-${VERSION}/NOTICE 2>/dev/null || true
+          fi
+          
+          echo '${{ needs.check-version.outputs.new_version }}' > output-android-${VERSION}/VERSION
+          
           cd output-android-${VERSION}
-          zip -r ../libwebrtc-android-${VERSION}.zip lib include libwebrtc.jar
+          zip -r ../libwebrtc-android-${VERSION}.zip lib include libwebrtc.jar NOTICE VERSION
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v6
