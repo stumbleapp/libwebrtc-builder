@@ -187,7 +187,7 @@ jobs:
           rm -rf ../headers-output/.git 2>/dev/null || true
           
           cd ..
-          zip -r -0 libwebrtc-headers-${VERSION}.zip headers-output
+          zip -r -0 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip headers-output
 
       - name: Upload headers artifact
         uses: actions/upload-artifact@v6
