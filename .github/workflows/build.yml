@@ -175,37 +175,18 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p headers-output
           
+          cd webrtc-src/src
           rsync -amv \
-            --include='*/' \
-            --include='*.h' \
-            --include='*.hpp' \
-            --include='*.inc' \
-            --include='BUILD.gn' \
-            --include='*.gni' \
-            --exclude='*' \
-            webrtc-src/src/api/ \
-            webrtc-src/src/common_audio/include/ \
-            webrtc-src/src/media/base/ \
-            webrtc-src/src/media/engine/ \
-            webrtc-src/src/modules/audio_coding/include/ \
-            webrtc-src/src/modules/audio_device/include/ \
-            webrtc-src/src/modules/audio_processing/include/ \
-            webrtc-src/src/modules/congestion_controller/include/ \
-            webrtc-src/src/modules/include/ \
-            webrtc-src/src/modules/rtp_rtcp/include/ \
-            webrtc-src/src/modules/rtp_rtcp/source/ \
-            webrtc-src/src/modules/utility/include/ \
-            webrtc-src/src/modules/video_coding/codecs/h264/include/ \
-            webrtc-src/src/modules/video_coding/codecs/vp8/include/ \
-            webrtc-src/src/modules/video_coding/codecs/vp9/include/ \
-            webrtc-src/src/modules/video_coding/include/ \
-            webrtc-src/src/pc/ \
-            webrtc-src/src/rtc_base/ \
-            webrtc-src/src/system_wrappers/include/ \
-            headers-output/
+            '--include=*/' \
+            '--include=*.h' \
+            '--include=*.hpp' \
+            '--include=*.inc' \
+            '--exclude=*' \
+            . ../headers-output/ 2>/dev/null || true
+          rm -rf ../headers-output/rtc_tools 2>/dev/null || true
+          rm -rf ../headers-output/.git 2>/dev/null || true
           
-          cp -r webrtc-src/src/third_party/abseil-cpp headers-output/third_party/ 2>/dev/null || true
-          
+          cd ..
           zip -r -0 libwebrtc-headers-${VERSION}.zip headers-output
 
       - name: Upload headers artifact
@@ -360,28 +341,29 @@ jobs:
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-android-${VERSION}
+          OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
+          mkdir -p $OUTPUT_DIR
           
-          mkdir -p output-android-${VERSION}/lib/arm64-v8a
-          mkdir -p output-android-${VERSION}/lib/armeabi-v7a
-          mkdir -p output-android-${VERSION}/lib/x86_64
-          mkdir -p output-android-${VERSION}/lib/x86
-          mkdir -p output-android-${VERSION}/include
+          mkdir -p $OUTPUT_DIR/lib/arm64-v8a
+          mkdir -p $OUTPUT_DIR/lib/armeabi-v7a
+          mkdir -p $OUTPUT_DIR/lib/x86_64
+          mkdir -p $OUTPUT_DIR/lib/x86
+          mkdir -p $OUTPUT_DIR/include
           
-          cp out/static/arm64-v8a/libwebrtc.a output-android-${VERSION}/lib/arm64-v8a/ 2>/dev/null || true
-          cp out/static/armeabi-v7a/libwebrtc.a output-android-${VERSION}/lib/armeabi-v7a/ 2>/dev/null || true
-          cp out/static/x86_64/libwebrtc.a output-android-${VERSION}/lib/x86_64/ 2>/dev/null || true
-          cp out/static/x86/libwebrtc.a output-android-${VERSION}/lib/x86/ 2>/dev/null || true
+          cp out/static/arm64-v8a/libwebrtc.a $OUTPUT_DIR/lib/arm64-v8a/ 2>/dev/null || true
+          cp out/static/armeabi-v7a/libwebrtc.a $OUTPUT_DIR/lib/armeabi-v7a/ 2>/dev/null || true
+          cp out/static/x86_64/libwebrtc.a $OUTPUT_DIR/lib/x86_64/ 2>/dev/null || true
+          cp out/static/x86/libwebrtc.a $OUTPUT_DIR/lib/x86/ 2>/dev/null || true
           
-          cp out/aar_extracted/libs/arm64-v8a/*.so output-android-${VERSION}/lib/arm64-v8a/ 2>/dev/null || true
-          cp out/aar_extracted/libs/armeabi-v7a/*.so output-android-${VERSION}/lib/armeabi-v7a/ 2>/dev/null || true
-          cp out/aar_extracted/libs/x86_64/*.so output-android-${VERSION}/lib/x86_64/ 2>/dev/null || true
-          cp out/aar_extracted/libs/x86/*.so output-android-${VERSION}/lib/x86/ 2>/dev/null || true
+          cp out/aar_extracted/libs/arm64-v8a/*.so $OUTPUT_DIR/lib/arm64-v8a/ 2>/dev/null || true
+          cp out/aar_extracted/libs/armeabi-v7a/*.so $OUTPUT_DIR/lib/armeabi-v7a/ 2>/dev/null || true
+          cp out/aar_extracted/libs/x86_64/*.so $OUTPUT_DIR/lib/x86_64/ 2>/dev/null || true
+          cp out/aar_extracted/libs/x86/*.so $OUTPUT_DIR/lib/x86/ 2>/dev/null || true
           
           if [ -f out/libwebrtc.jar ]; then
-            cp out/libwebrtc.jar output-android-${VERSION}/libwebrtc.jar
+            cp out/libwebrtc.jar $OUTPUT_DIR/libwebrtc.jar
           elif [ -f out/aar_extracted/classes.jar ]; then
-            cp out/aar_extracted/classes.jar output-android-${VERSION}/libwebrtc.jar
+            cp out/aar_extracted/classes.jar $OUTPUT_DIR/libwebrtc.jar
           fi
           
           rsync -amv \
@@ -390,15 +372,14 @@ jobs:
             '--include=*.hpp' \
             '--include=*.inc' \
             '--exclude=*' \
-            . output-android-${VERSION}/include/ 2>/dev/null || true
-          rm -rf output-android-${VERSION}/include/rtc_tools 2>/dev/null || true
-          rm -rf output-android-${VERSION}/include/.git 2>/dev/null || true
+            . $OUTPUT_DIR/include/ 2>/dev/null || true
+          rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
+          rm -rf $OUTPUT_DIR/include/.git 2>/dev/null || true
           
-          cp LICENSE.md output-android-${VERSION}/NOTICE 2>/dev/null || true
+          cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          echo "$VERSION" > $OUTPUT_DIR/VERSION
           
-          echo "${{ needs.check-version.outputs.new_version }}" > output-android-${VERSION}/VERSION
-          
-          cd output-android-${VERSION}
+          cd $OUTPUT_DIR
           zip -r ../libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION
           if [ -d include ] && [ "$(ls -A include 2>/dev/null)" ]; then
             zip -r ../libwebrtc-android-${VERSION}.zip include
@@ -827,7 +808,7 @@ jobs:
 
       - name: Create Linux artifacts
         run: |
-          cd webrtc-src/src
+          cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
           
           for arch in arm64 armv7 x64 x86; do
