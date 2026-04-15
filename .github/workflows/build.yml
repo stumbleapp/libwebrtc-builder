@@ -342,23 +342,16 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
           OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
-          mkdir -p $OUTPUT_DIR
           
-          mkdir -p $OUTPUT_DIR/lib/arm64-v8a
-          mkdir -p $OUTPUT_DIR/lib/armeabi-v7a
-          mkdir -p $OUTPUT_DIR/lib/x86_64
-          mkdir -p $OUTPUT_DIR/lib/x86
+          for arch in arm64-v8a armeabi-v7a x86_64 x86; do
+            mkdir -p $OUTPUT_DIR/lib/$arch
+          done
           mkdir -p $OUTPUT_DIR/include
           
-          cp out/static/arm64-v8a/libwebrtc.a $OUTPUT_DIR/lib/arm64-v8a/ 2>/dev/null || true
-          cp out/static/armeabi-v7a/libwebrtc.a $OUTPUT_DIR/lib/armeabi-v7a/ 2>/dev/null || true
-          cp out/static/x86_64/libwebrtc.a $OUTPUT_DIR/lib/x86_64/ 2>/dev/null || true
-          cp out/static/x86/libwebrtc.a $OUTPUT_DIR/lib/x86/ 2>/dev/null || true
-          
-          cp out/aar_extracted/libs/arm64-v8a/*.so $OUTPUT_DIR/lib/arm64-v8a/ 2>/dev/null || true
-          cp out/aar_extracted/libs/armeabi-v7a/*.so $OUTPUT_DIR/lib/armeabi-v7a/ 2>/dev/null || true
-          cp out/aar_extracted/libs/x86_64/*.so $OUTPUT_DIR/lib/x86_64/ 2>/dev/null || true
-          cp out/aar_extracted/libs/x86/*.so $OUTPUT_DIR/lib/x86/ 2>/dev/null || true
+          for arch in arm64-v8a armeabi-v7a x86_64 x86; do
+            cp out/static/$arch/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            cp out/aar_extracted/libs/$arch/*.so $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+          done
           
           if [ -f out/libwebrtc.jar ]; then
             cp out/libwebrtc.jar $OUTPUT_DIR/libwebrtc.jar
@@ -380,10 +373,7 @@ jobs:
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           cd $OUTPUT_DIR
-          zip -r ../libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION
-          if [ -d include ] && [ "$(ls -A include 2>/dev/null)" ]; then
-            zip -r ../libwebrtc-android-${VERSION}.zip include
-          fi
+          zip -r ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION include
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v6
