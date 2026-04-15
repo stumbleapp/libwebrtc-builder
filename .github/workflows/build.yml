@@ -311,7 +311,7 @@ jobs:
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
           apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
 
-      - name: Build Android AAR
+      - name: Build Android (arm64, armv7, x64, x86)
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
@@ -795,13 +795,11 @@ jobs:
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
           apply_patch ${{ github.workspace }}/patches/linux_clang_optional.patch
           apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
-          apply_patch ${{ github.workspace }}/patches/linux_remove_crel.patch
-          apply_patch ${{ github.workspace }}/patches/nacl_armv6_2.patch
           apply_patch ${{ github.workspace }}/patches/4k.patch
           apply_patch ${{ github.workspace }}/patches/add_licenses.patch
           apply_patch ${{ github.workspace }}/patches/add_deps.patch
 
-      - name: Build Linux (all architectures)
+      - name: Build Linux (arm64, armv7, x64, x86)
         run: |
           cd webrtc-src/src
           
@@ -833,21 +831,22 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           
           for arch in arm64 armv7 x64 x86; do
-            mkdir -p output-$arch-${VERSION}/lib/debug
-            mkdir -p output-$arch-${VERSION}/lib/release
-            mkdir -p output-$arch-${VERSION}/include
+            OUTPUT_DIR="${{ github.workspace }}/output-$arch-${VERSION}"
+            mkdir -p $OUTPUT_DIR/lib/debug
+            mkdir -p $OUTPUT_DIR/lib/release
+            mkdir -p $OUTPUT_DIR/include
             
             echo "Creating $arch artifact..."
             
             cd out/RELEASE-$arch/obj
             /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-            cp ../libwebrtc.a ../../../../output-$arch-${VERSION}/lib/release/libwebrtc.a
-            cd ../../..
+            cp ../libwebrtc.a $OUTPUT_DIR/lib/release/libwebrtc.a
+            cd ${{ github.workspace }}/webrtc-src/src
             
             cd out/DEBUG-$arch/obj
             /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-            cp ../libwebrtc.a ../../../../output-$arch-${VERSION}/lib/debug/libwebrtc.a
-            cd ../../..
+            cp ../libwebrtc.a $OUTPUT_DIR/lib/debug/libwebrtc.a
+            cd ${{ github.workspace }}/webrtc-src/src
             
             rsync -amv \
               '--include=*/' \
@@ -855,16 +854,16 @@ jobs:
               '--include=*.hpp' \
               '--include=*.inc' \
               '--exclude=*' \
-              . output-$arch-${VERSION}/include/ 2>/dev/null || true
-            rm -rf output-$arch-${VERSION}/include/rtc_tools 2>/dev/null || true
-            rm -rf output-$arch-${VERSION}/include/.git 2>/dev/null || true
+              . $OUTPUT_DIR/include/ 2>/dev/null || true
+            rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
+            rm -rf $OUTPUT_DIR/include/.git 2>/dev/null || true
             
-            cp LICENSE.md output-$arch-${VERSION}/NOTICE 2>/dev/null || true
-            echo "$VERSION" > output-$arch-${VERSION}/VERSION
+            cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+            echo "$VERSION" > $OUTPUT_DIR/VERSION
             
-            cd output-$arch-${VERSION}
+            cd $OUTPUT_DIR
             zip -r -0 ../libwebrtc-linux-$arch-${VERSION}.zip lib include NOTICE VERSION
-            cd ..
+            cd ${{ github.workspace }}/webrtc-src/src
           done
 
       - name: Upload Linux arm64 artifact
