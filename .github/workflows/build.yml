@@ -843,7 +843,7 @@ jobs:
             echo "$VERSION" > $OUTPUT_DIR/VERSION
             
             cd $OUTPUT_DIR
-            zip -r -0 ../libwebrtc-linux-$arch-${VERSION}.zip lib include NOTICE VERSION
+            zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$arch-${VERSION}.zip lib include NOTICE VERSION
             cd ${{ github.workspace }}/webrtc-src/src
           done
 
