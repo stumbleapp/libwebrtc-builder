@@ -81,9 +81,21 @@ jobs:
           enableCrossOsArchive: true
           lookup-only: true
 
-      - name: Maximize GitHub runner space
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        uses: justinthelaw/maximize-github-runner-space@v0.9.0
+      - name: Free disk space
+        run: |
+          echo "Removing unused runtimes from runner..."
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/julia* || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf /opt/google/chrome || true
+          sudo rm -rf /opt/microsoft || true
+          sudo rm -rf /opt/az || true
+          echo "Disk space freed"
 
       - name: Restore depot_tools
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
@@ -145,6 +157,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
+      - name: Free disk space
+        run: |
+          echo "Removing unused runtimes from runner..."
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/julia* || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf /opt/google/chrome || true
+          sudo rm -rf /opt/microsoft || true
+          sudo rm -rf /opt/az || true
+          echo "Disk space freed"
+
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
         with:
@@ -204,6 +232,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
+      - name: Free disk space
+        run: |
+          echo "Removing unused runtimes from runner..."
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/julia* || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf /opt/google/chrome || true
+          sudo rm -rf /opt/microsoft || true
+          sudo rm -rf /opt/az || true
+          echo "Disk space freed"
+
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
         with:
@@ -237,6 +281,15 @@ jobs:
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
           rm -f ${{ github.workspace }}/webrtc-src.tar.*
+          
+          echo "Cleaning source for Android build (remove iOS/macOS/Windows specific code)..."
+          cd /tmp/webrtc-src/webrtc-src/src
+          rm -rf tools_webrtc/ios
+          rm -rf sdk/objc
+          rm -rf sdk/mac
+          rm -rf build/config/win
+          rm -rf build/toolchain/win*
+          rm -rf testing/scripts/win*
 
       - name: Checkout patches
         run: |
@@ -391,6 +444,16 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 240
     steps:
+      - name: Free disk space
+        run: |
+          echo "Removing unused runtimes from runner..."
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /Library/Java/JavaVirtualMachines || true
+          sudo rm -rf /usr/lib/jvm || true
+          echo "Removing Xcode DerivedData to save space..."
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          echo "Disk space freed"
+
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
         with:
@@ -422,6 +485,16 @@ jobs:
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
           rm -f ${{ github.workspace }}/webrtc-src.tar.*
+          
+          echo "Cleaning source for iOS build (remove Android/Linux/Windows specific code)..."
+          cd /tmp/webrtc-src/webrtc-src/src
+          rm -rf tools_webrtc/android
+          rm -rf build/android
+          rm -rf build/linux
+          rm -rf build/config/linux
+          rm -rf build/config/boringssl/linux*
+          rm -rf build/config/win
+          rm -rf build/toolchain/win*
 
       - name: Checkout patches
         run: |
@@ -492,6 +565,9 @@ jobs:
             vpython3 build_ios_libs.py --output-dir out_ios_$arch --build_config release --arch $arch --extra-gn-args 'is_debug=false rtc_libvpx_build_vp9=true rtc_include_tests=false rtc_build_examples=false rtc_build_tools=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false ios_deployment_target="15.0"'
             ls -la out_ios_$arch/
             cd ${{ github.workspace }}/webrtc-src/src
+            
+            echo "Cleaning DerivedData between arch builds to save space..."
+            rm -rf ~/Library/Developer/Xcode/DerivedData/*
           done
 
       - name: Create iOS artifacts
@@ -537,6 +613,14 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 240
     steps:
+      - name: Free disk space
+        run: |
+          echo "Removing unused runtimes from runner..."
+          sudo rm -rf /usr/share/dotnet || true
+          echo "Removing Xcode DerivedData to save space..."
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          echo "Disk space freed"
+
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
         with:
@@ -568,6 +652,16 @@ jobs:
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
           rm -f ${{ github.workspace }}/webrtc-src.tar.*
+          
+          echo "Cleaning source for macOS build (remove Android/iOS/Linux/Windows specific code)..."
+          cd /tmp/webrtc-src/webrtc-src/src
+          rm -rf tools_webrtc/android
+          rm -rf build/android
+          rm -rf tools_webrtc/ios
+          rm -rf build/linux
+          rm -rf build/config/linux
+          rm -rf build/config/win
+          rm -rf build/toolchain/win*
 
       - name: Checkout patches
         run: |
@@ -648,6 +742,9 @@ jobs:
             cd out_macos_$arch/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
             cd ${{ github.workspace }}/webrtc-src/src
           done
+          
+          echo "Cleaning DerivedData to save space..."
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
       - name: Create macOS artifacts
         run: |
@@ -691,6 +788,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
+      - name: Free disk space
+        run: |
+          echo "Removing unused runtimes from runner..."
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/julia* || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf /opt/google/chrome || true
+          sudo rm -rf /opt/microsoft || true
+          sudo rm -rf /opt/az || true
+          echo "Disk space freed"
+
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
         with:
@@ -724,6 +837,17 @@ jobs:
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
           rm -f ${{ github.workspace }}/webrtc-src.tar.*
+          
+          echo "Cleaning source for Linux build (remove Android/iOS/macOS/Windows specific code)..."
+          cd /tmp/webrtc-src/webrtc-src/src
+          rm -rf tools_webrtc/android
+          rm -rf build/android
+          rm -rf tools_webrtc/ios
+          rm -rf sdk/objc
+          rm -rf sdk/mac
+          rm -rf build/config/mac
+          rm -rf build/config/win
+          rm -rf build/toolchain/win*
 
       - name: Checkout patches
         run: |
@@ -886,6 +1010,17 @@ jobs:
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
+      - name: Free disk space
+        run: |
+          Write-Output "Removing Android SDK from runner..."
+          Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Android\Sdk" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:ANDROID_HOME" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:ANDROID_SDK_ROOT" -ErrorAction SilentlyContinue
+          Write-Output "Removing unused tools from runner..."
+          Remove-Item -Recurse -Force "C:\Go" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:TEMP\chocolatey" -ErrorAction SilentlyContinue
+          Write-Output "Disk space freed"
+
       - name: Restore WebRTC source
         uses: actions/cache@v5.0.4
         with:
@@ -927,6 +1062,18 @@ jobs:
           Write-Output "Extracted contents:"
           Get-ChildItem "$env:TEMP\webrtc-src"
           Remove-Item -Force "${{ github.workspace }}\webrtc-src.tar*" -ErrorAction SilentlyContinue
+          
+          Write-Output "Cleaning source for Windows build (remove Android/iOS/macOS/Linux specific code)..."
+          Set-Location "$env:TEMP\webrtc-src\webrtc-src\src"
+          Remove-Item -Recurse -Force "tools_webrtc/android" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "build/android" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "tools_webrtc/ios" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "build/linux" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "build/config/linux" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "build/config/mac" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "sdk/objc" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "sdk/mac" -ErrorAction SilentlyContinue
+          Set-Location "${{ github.workspace }}"
 
       - name: Checkout patches
         run: |
