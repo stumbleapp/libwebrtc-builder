@@ -82,6 +82,7 @@ jobs:
           lookup-only: true
 
       - name: Free disk space
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           echo "Removing unused runtimes from runner..."
           sudo rm -rf /usr/share/dotnet || true
