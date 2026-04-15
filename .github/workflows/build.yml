@@ -410,11 +410,6 @@ jobs:
           name: android
           path: webrtc-src/src/libwebrtc-android-*.zip
 
-      - name: Cleanup Android build
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          rm -rf out out_arm64 out_armv7 out_x64 out_x86 output-android-*
-
   build-ios:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: false
@@ -705,7 +700,7 @@ jobs:
 
   build-linux:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: false
+    if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -760,27 +755,6 @@ jobs:
           echo "webrtc-src moved to workspace:"
           ls -la ${{ github.workspace }}/webrtc-src/
 
-      - name: Apply patches
-        run: |
-          apply_patch() {
-            local patch=$1
-            if patch -p1 < "$patch" 2>&1; then
-              echo "✓ Applied: $(basename $patch)"
-            else
-              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
-            fi
-          }
-          cd ${{ github.workspace }}/webrtc-src/src
-          apply_patch ${{ github.workspace }}/patches/4k_linux.patch
-          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
-          apply_patch ${{ github.workspace }}/patches/linux_clang_optional.patch
-          apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
-          apply_patch ${{ github.workspace }}/patches/linux_remove_crel.patch
-          apply_patch ${{ github.workspace }}/patches/nacl_armv6_2.patch
-          apply_patch ${{ github.workspace }}/patches/4k.patch
-          apply_patch ${{ github.workspace }}/patches/add_licenses.patch
-          apply_patch ${{ github.workspace }}/patches/add_deps.patch
-
       - name: Restore depot_tools
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
@@ -806,44 +780,92 @@ jobs:
           # Install sysroots for all architectures
           python3 build/linux/sysroot_scripts/install-sysroot.py --all
 
-      - name: Build Linux arm64
+      - name: Apply patches
         run: |
-          cd webrtc-src/src
-          gn gen out/Release-arm64 --args='target_os="linux" target_cpu="arm64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-arm64 -j16 webrtc
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
+          cd ${{ github.workspace }}/webrtc-src/src
+          apply_patch ${{ github.workspace }}/patches/4k_linux.patch
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+          apply_patch ${{ github.workspace }}/patches/linux_clang_optional.patch
+          apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
+          apply_patch ${{ github.workspace }}/patches/linux_remove_crel.patch
+          apply_patch ${{ github.workspace }}/patches/nacl_armv6_2.patch
+          apply_patch ${{ github.workspace }}/patches/4k.patch
+          apply_patch ${{ github.workspace }}/patches/add_licenses.patch
+          apply_patch ${{ github.workspace }}/patches/add_deps.patch
 
-      - name: Build Linux armv7
+      - name: Build Linux (all architectures)
         run: |
           cd webrtc-src/src
-          gn gen out/Release-armv7 --args='target_os="linux" target_cpu="arm" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-armv7 -j16 webrtc
-
-      - name: Build Linux x64
-        run: |
-          cd webrtc-src/src
-          gn gen out/Release-x64 --args='target_os="linux" target_cpu="x64" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-x64 -j16 webrtc
-
-      - name: Build Linux x86
-        run: |
-          cd webrtc-src/src
-          gn gen out/Release-x86 --args='target_os="linux" target_cpu="x86" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false' --quiet
-          ninja -C out/Release-x86 -j16 webrtc
-
-      - name: Create Linux arm64 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-arm64/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
           
+          echo "=== Building all Linux architectures with debug + release ==="
+          
+          for arch in arm64 armv7 x64 x86; do
+            case $arch in
+              arm64) cpu="arm64" ;;
+              armv7) cpu="arm" ;;
+              x64) cpu="x64" ;;
+              x86) cpu="x86" ;;
+            esac
+            
+            for build_type in debug release; do
+              case $build_type in
+                debug) is_debug=true; out_dir="DEBUG-$arch" ;;
+                release) is_debug=false; out_dir="RELEASE-$arch" ;;
+              esac
+              
+              echo "Building Linux $arch ($build_type)..."
+              gn gen out/$out_dir --args="target_os=\"linux\" target_cpu=\"$cpu\" is_debug=$is_debug rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false" --quiet
+              ninja -C out/$out_dir -j16 webrtc
+            done
+          done
+
+      - name: Create Linux artifacts
+        run: |
+          cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-arm64-${VERSION}/lib
-          cd out/Release-arm64/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
-          test -f ../../../output-arm64-${VERSION}/lib/libwebrtc-arm64.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-arm64-${VERSION}.zip output-arm64-${VERSION}/lib
+          
+          for arch in arm64 armv7 x64 x86; do
+            mkdir -p output-$arch-${VERSION}/lib/debug
+            mkdir -p output-$arch-${VERSION}/lib/release
+            mkdir -p output-$arch-${VERSION}/include
+            
+            echo "Creating $arch artifact..."
+            
+            cd out/RELEASE-$arch/obj
+            /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+            cp ../libwebrtc.a ../../../../output-$arch-${VERSION}/lib/release/libwebrtc.a
+            cd ../../..
+            
+            cd out/DEBUG-$arch/obj
+            /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
+            cp ../libwebrtc.a ../../../../output-$arch-${VERSION}/lib/debug/libwebrtc.a
+            cd ../../..
+            
+            rsync -amv \
+              '--include=*/' \
+              '--include=*.h' \
+              '--include=*.hpp' \
+              '--include=*.inc' \
+              '--exclude=*' \
+              . output-$arch-${VERSION}/include/ 2>/dev/null || true
+            rm -rf output-$arch-${VERSION}/include/rtc_tools 2>/dev/null || true
+            rm -rf output-$arch-${VERSION}/include/.git 2>/dev/null || true
+            
+            cp LICENSE.md output-$arch-${VERSION}/NOTICE 2>/dev/null || true
+            echo "$VERSION" > output-$arch-${VERSION}/VERSION
+            
+            cd output-$arch-${VERSION}
+            zip -r -0 ../libwebrtc-linux-$arch-${VERSION}.zip lib include NOTICE VERSION
+            cd ..
+          done
 
       - name: Upload Linux arm64 artifact
         uses: actions/upload-artifact@v6
@@ -851,62 +873,17 @@ jobs:
           name: linux-arm64
           path: webrtc-src/src/libwebrtc-linux-arm64-*.zip
 
-      - name: Create Linux armv7 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-armv7/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-armv7-${VERSION}/lib
-          cd out/Release-armv7/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
-          test -f ../../../output-armv7-${VERSION}/lib/libwebrtc-armv7.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-armv7-${VERSION}.zip output-armv7-${VERSION}/lib
-
       - name: Upload Linux armv7 artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-armv7
           path: webrtc-src/src/libwebrtc-linux-armv7-*.zip
 
-      - name: Create Linux x64 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-x64/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x64-${VERSION}/lib
-          cd out/Release-x64/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-x64-${VERSION}/lib/libwebrtc-x64.a
-          test -f ../../../output-x64-${VERSION}/lib/libwebrtc-x64.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-x64-${VERSION}.zip output-x64-${VERSION}/lib
-
       - name: Upload Linux x64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-x64
           path: webrtc-src/src/libwebrtc-linux-x64-*.zip
-
-      - name: Create Linux x86 artifact
-        run: |
-          cd webrtc-src/src
-          echo "Checking build output..."
-          ls -la out/Release-x86/obj/ 2>/dev/null | head -20 || echo "obj dir not found"
-          
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x86-${VERSION}/lib
-          cd out/Release-x86/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
-          test -f ../../../output-x86-${VERSION}/lib/libwebrtc-x86.a
-          cd ../../..
-          zip -r -0 libwebrtc-linux-x86-${VERSION}.zip output-x86-${VERSION}/lib
 
       - name: Upload Linux x86 artifact
         uses: actions/upload-artifact@v6
