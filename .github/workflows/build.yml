@@ -224,7 +224,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: headers
-          path: ${{ github.workspace }}/libwebrtc-headers-*.zip
+          path: ${{ github.workspace }}/webrtc-src/libwebrtc-headers-*.zip
 
   build-android:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]

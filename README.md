@@ -118,7 +118,6 @@ pod 'libWebRTC', :git => 'https://github.com/stumbleapp/libwebrtc-builder'
 - [maxim-lobanov/setup-xcode](https://github.com/maxim-latest/setup-xcode) - Xcode version management
 - [softprops/action-gh-release](https://github.com/softprops/action-gh-release) - GitHub releases
 - [stefanzweifel/git-auto-commit-action](https://github.com/stefanzweifel/git-auto-commit-action) - Auto-commit changes
-- [justinthelaw/maximize-github-runner-space](https://github.com/justinthelaw/maximize-github-runner-space) - Maximize runner disk space
 
 ---
 
