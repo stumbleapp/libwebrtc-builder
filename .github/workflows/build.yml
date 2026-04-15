@@ -385,31 +385,14 @@ jobs:
           fi
           
           rsync -amv \
-            --include='*/' \
-            --include='*.h' \
-            --include='*.hpp' \
-            --include='*.inc' \
-            --exclude='*' \
-            api/ \
-            common_audio/include/ \
-            media/base/ \
-            media/engine/ \
-            modules/audio_coding/include/ \
-            modules/audio_device/include/ \
-            modules/audio_processing/include/ \
-            modules/congestion_controller/include/ \
-            modules/include/ \
-            modules/rtp_rtcp/include/ \
-            modules/rtp_rtcp/source/ \
-            modules/utility/include/ \
-            modules/video_coding/codecs/h264/include/ \
-            modules/video_coding/codecs/vp8/include/ \
-            modules/video_coding/codecs/vp9/include/ \
-            modules/video_coding/include/ \
-            pc/ \
-            rtc_base/ \
-            system_wrappers/include/ \
-            output-android-${VERSION}/include/ 2>/dev/null || true
+            '--include=*/' \
+            '--include=*.h' \
+            '--include=*.hpp' \
+            '--include=*.inc' \
+            '--exclude=*' \
+            . output-android-${VERSION}/include/ 2>/dev/null || true
+          rm -rf output-android-${VERSION}/include/rtc_tools 2>/dev/null || true
+          rm -rf output-android-${VERSION}/include/.git 2>/dev/null || true
           
           cp LICENSE.md output-android-${VERSION}/NOTICE 2>/dev/null || true
           
