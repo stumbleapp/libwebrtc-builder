@@ -218,8 +218,8 @@ jobs:
           rm -rf ../headers-output/rtc_tools 2>/dev/null || true
           rm -rf ../headers-output/.git 2>/dev/null || true
           
-          cd ..
-          zip -r -9 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip headers-output
+          cd ../headers-output
+          zip -r -9 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip .
 
       - name: Upload headers artifact
         uses: actions/upload-artifact@v6
@@ -326,11 +326,11 @@ jobs:
         run: |
           export PATH="${{ github.workspace }}/depot_tools:$PATH"
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-          cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for Android
-          echo 'target_os = ["android"]' > ../.gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          cd ${{ github.workspace }}/webrtc-src
+          gclient config --solutions='[{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]'
+          echo 'target_os = ["android"]' > .gclient
           
           gclient sync --force
           gclient runhooks
@@ -533,11 +533,11 @@ jobs:
         run: |
           export PATH="${{ github.workspace }}/depot_tools:$PATH"
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-          cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for iOS
-          echo 'target_os = ["ios"]' > ../.gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          cd ${{ github.workspace }}/webrtc-src
+          gclient config --solutions='[{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]'
+          echo 'target_os = ["ios"]' > .gclient
           
           gclient sync --force
           gclient runhooks
@@ -700,11 +700,11 @@ jobs:
         run: |
           export PATH="${{ github.workspace }}/depot_tools:$PATH"
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-          cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for macOS
-          echo 'target_os = ["mac"]' > ../.gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          cd ${{ github.workspace }}/webrtc-src
+          gclient config --solutions='[{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]'
+          echo 'target_os = ["mac"]' > .gclient
           
           gclient sync --force
           gclient runhooks
@@ -881,11 +881,11 @@ jobs:
         run: |
           export PATH="${{ github.workspace }}/depot_tools:$PATH"
           echo "${{ github.workspace }}/depot_tools" >> $GITHUB_PATH
-          cd ${{ github.workspace }}/webrtc-src/src
           
           # Configure gclient for Linux
-          echo 'target_os = ["linux"]' > ../.gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> ../.gclient
+          cd ${{ github.workspace }}/webrtc-src
+          gclient config --solutions='[{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]'
+          echo 'target_os = ["linux"]' > .gclient
           
           gclient sync --force
           gclient runhooks
@@ -1107,11 +1107,11 @@ jobs:
         run: |
           $env:PATH = "${{ github.workspace }}\depot_tools;" + $env:PATH
           Add-Content -Path $env:GITHUB_PATH -Value "${{ github.workspace }}\depot_tools"
-          Set-Location "${{ github.workspace }}/webrtc-src/src"
-          
+
           # Configure gclient for Windows
-          "target_os = [`win`]" | Out-File -FilePath ../.gclient -Encoding ASCII
-          "solutions = [{`name`: `src`, `url`: `https://webrtc.googlesource.com/src.git`, `deps_file`: `DEPS`, `managed`: False}]" | Out-File -FilePath ../.gclient -Append -Encoding ASCII
+          Set-Location "${{ github.workspace }}/webrtc-src"
+          gclient config --solutions='[{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]'
+          'target_os = ["win"]' | Out-File -FilePath .gclient -Encoding ASCII
           
           gclient sync --force
           gclient runhooks
