@@ -187,7 +187,7 @@ jobs:
           rm -rf ../headers-output/.git 2>/dev/null || true
           
           cd ..
-          zip -r -0 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip headers-output
+          zip -r -9 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip headers-output
 
       - name: Upload headers artifact
         uses: actions/upload-artifact@v6
@@ -233,6 +233,7 @@ jobs:
           fi
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
+          rm -f ${{ github.workspace }}/webrtc-src.tar.*
 
       - name: Checkout patches
         run: |
@@ -373,17 +374,17 @@ jobs:
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           cd $OUTPUT_DIR
-          zip -r ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION include
+          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION include
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v6
         with:
           name: android
-          path: webrtc-src/src/libwebrtc-android-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-*.zip
 
   build-ios:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: false
+    if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     timeout-minutes: 240
     steps:
@@ -417,6 +418,7 @@ jobs:
           fi
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
+          rm -f ${{ github.workspace }}/webrtc-src.tar.*
 
       - name: Checkout patches
         run: |
@@ -435,19 +437,6 @@ jobs:
           mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
           echo "webrtc-src moved to workspace:"
           ls -la ${{ github.workspace }}/webrtc-src/
-
-      - name: Apply patches
-        run: |
-          apply_patch() {
-            local patch=$1
-            if patch -p1 < "$patch" 2>&1; then
-              echo "✓ Applied: $(basename $patch)"
-            else
-              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
-            fi
-          }
-          cd ${{ github.workspace }}/webrtc-src/src
-          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -476,51 +465,72 @@ jobs:
           gclient sync --force
           gclient runhooks
 
-      - name: Build iOS arm64
+      - name: Apply patches
         run: |
-          cd webrtc-src/src
-          mkdir -p out_ios_arm64
-          cd tools_webrtc/ios
-          vpython3 build_ios_libs.py --output-dir out_ios_arm64 --build_config release --arch arm64 --extra-gn-args 'is_debug=false rtc_include_tests=false rtc_build_examples=false rtc_build_tools=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false is_clang=true'
-          ls -la out_ios_arm64/
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
+          cd ${{ github.workspace }}/webrtc-src/src
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
-      - name: Build iOS x64
+      - name: Build iOS (arm64, x64)
         run: |
-          cd webrtc-src/src
-          mkdir -p out_ios_x64
-          cd tools_webrtc/ios
-          vpython3 build_ios_libs.py --output-dir out_ios_x64 --build_config release --arch x64 --extra-gn-args 'is_debug=false rtc_include_tests=false rtc_build_examples=false rtc_build_tools=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false is_clang=true'
-          ls -la out_ios_x64/
+          cd ${{ github.workspace }}/webrtc-src/src
+          
+          for arch in arm64 x64; do
+            echo "Building iOS $arch..."
+            mkdir -p out_ios_$arch
+            cd tools_webrtc/ios
+            vpython3 build_ios_libs.py --output-dir out_ios_$arch --build_config release --arch $arch --extra-gn-args 'is_debug=false rtc_libvpx_build_vp9=true rtc_include_tests=false rtc_build_examples=false rtc_build_tools=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false ios_deployment_target="15.0"'
+            ls -la out_ios_$arch/
+            cd ${{ github.workspace }}/webrtc-src/src
+          done
 
-      - name: Create iOS arm64 artifact
+      - name: Create iOS artifacts
         run: |
-          cd webrtc-src/src/tools_webrtc/ios/out_ios_arm64
-          test -d WebRTC.xcframework
+          cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r -0 libwebrtc-ios-arm64-${VERSION}.zip WebRTC.xcframework/*
+          
+          for arch in arm64 x64; do
+            OUTPUT_DIR="${{ github.workspace }}/output-ios-$arch-${VERSION}"
+            mkdir -p $OUTPUT_DIR
+            cd tools_webrtc/ios/out_ios_$arch
+            
+            test -d WebRTC.xcframework
+            cp -r WebRTC.xcframework $OUTPUT_DIR/ 2>/dev/null || true
+            cp -r WebRTC.xcframework/* $OUTPUT_DIR/ 2>/dev/null || true
+            
+            cd ${{ github.workspace }}/webrtc-src/src
+            
+            echo "$VERSION" > $OUTPUT_DIR/VERSION
+            
+            cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+            
+            cd $OUTPUT_DIR
+            zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-$arch-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
+            cd ${{ github.workspace }}/webrtc-src/src
+          done
 
       - name: Upload iOS arm64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: ios-arm64
-          path: webrtc-src/src/tools_webrtc/ios/out_ios_arm64/libwebrtc-ios-arm64-*.zip
-
-      - name: Create iOS x64 artifact
-        run: |
-          cd webrtc-src/src/tools_webrtc/ios/out_ios_x64
-          test -d WebRTC.xcframework
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          zip -r -0 libwebrtc-ios-x64-${VERSION}.zip WebRTC.xcframework/*
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-arm64-*.zip
 
       - name: Upload iOS x64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: ios-x64
-          path: webrtc-src/src/tools_webrtc/ios/out_ios_x64/libwebrtc-ios-x64-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-x64-*.zip
 
   build-macos:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: false
+    if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     timeout-minutes: 240
     steps:
@@ -554,6 +564,7 @@ jobs:
           fi
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
+          rm -f ${{ github.workspace }}/webrtc-src.tar.*
 
       - name: Checkout patches
         run: |
@@ -572,19 +583,6 @@ jobs:
           mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
           echo "webrtc-src moved to workspace:"
           ls -la ${{ github.workspace }}/webrtc-src/
-
-      - name: Apply patches
-        run: |
-          apply_patch() {
-            local patch=$1
-            if patch -p1 < "$patch" 2>&1; then
-              echo "✓ Applied: $(basename $patch)"
-            else
-              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
-            fi
-          }
-          cd ${{ github.workspace }}/webrtc-src/src
-          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -613,61 +611,76 @@ jobs:
           gclient sync --force
           gclient runhooks
 
-      - name: Build macOS arm64
+      - name: Apply patches
+        run: |
+          apply_patch() {
+            local patch=$1
+            if patch -p1 < "$patch" 2>&1; then
+              echo "✓ Applied: $(basename $patch)"
+            else
+              echo "⚠ Warning: $(basename $patch) failed or already applied" >&2
+            fi
+          }
+          cd ${{ github.workspace }}/webrtc-src/src
+          apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
+
+      - name: Build macOS (arm64, x64)
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          mkdir -p out_macos_arm64
-          gn gen out_macos_arm64 --args='target_os="mac" target_cpu="arm64" enable_stripping=true enable_dsyms=true is_debug=false is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true'
-          ninja -C out_macos_arm64
-          ninja -C out_macos_arm64 api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
-          cd out_macos_arm64/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
+          
+          for arch in arm64 x64; do
+            echo "Building macOS $arch (debug)..."
+            mkdir -p out_macos_${arch}_debug
+            gn gen out_macos_${arch}_debug --args='target_os="mac" target_cpu="$arch" enable_stripping=true enable_dsyms=true is_debug=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target="10.15"'
+            ninja -C out_macos_${arch}_debug
+            ninja -C out_macos_${arch}_debug api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
+            cd out_macos_${arch}_debug/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
+            cd ${{ github.workspace }}/webrtc-src/src
+            
+            echo "Building macOS $arch (release)..."
+            mkdir -p out_macos_$arch
+            gn gen out_macos_$arch --args='target_os="mac" target_cpu="$arch" enable_stripping=true enable_dsyms=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target="10.15"'
+            ninja -C out_macos_$arch
+            ninja -C out_macos_$arch api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
+            cd out_macos_$arch/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
+            cd ${{ github.workspace }}/webrtc-src/src
+          done
 
-      - name: Build macOS x64
+      - name: Create macOS artifacts
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          mkdir -p out_macos_x64
-          gn gen out_macos_x64 --args='target_os="mac" target_cpu="x64" enable_stripping=true enable_dsyms=true is_debug=false is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true'
-          ninja -C out_macos_x64
-          ninja -C out_macos_x64 api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
-          cd out_macos_x64/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
-
-      - name: Create macOS arm64 artifact
-        run: |
-          cd webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-arm64-${VERSION}/include output-arm64-${VERSION}/lib output-arm64-${VERSION}/Frameworks
-          cp -R out_macos_arm64/WebRTC.framework output-arm64-${VERSION}/Frameworks/ || true
-          cp -R out_macos_arm64/WebRTC.dSYM output-arm64-${VERSION}/Frameworks/ || true
-          cp out_macos_arm64/obj/libwebrtc.a output-arm64-${VERSION}/lib/libwebrtc-arm64.a || true
-          cp -R out_macos_arm64/include/* output-arm64-${VERSION}/include/ 2>/dev/null || true
-          cp LICENSE output-arm64-${VERSION}/ 2>/dev/null || true
-          cp VERSION output-arm64-${VERSION}/ 2>/dev/null || true
-          zip -r -0 libwebrtc-macos-arm64-${VERSION}.zip output-arm64-${VERSION}/*
+          
+          for arch in arm64 x64; do
+            OUTPUT_DIR="${{ github.workspace }}/output-macos-$arch-${VERSION}"
+            mkdir -p $OUTPUT_DIR/include $OUTPUT_DIR/lib/debug $OUTPUT_DIR/lib/release $OUTPUT_DIR/Frameworks
+            
+            cp out_macos_${arch}_debug/obj/libwebrtc.a $OUTPUT_DIR/lib/debug/libwebrtc.a || true
+            cp out_macos_${arch}/obj/libwebrtc.a $OUTPUT_DIR/lib/release/libwebrtc.a || true
+            
+            cp -R out_macos_$arch/WebRTC.framework $OUTPUT_DIR/Frameworks/ || true
+            cp -R out_macos_$arch/WebRTC.dSYM $OUTPUT_DIR/Frameworks/ || true
+            cp -R out_macos_$arch/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+            
+            echo "$VERSION" > $OUTPUT_DIR/VERSION
+            cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+            
+            cd $OUTPUT_DIR
+            zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$arch-${VERSION}.zip lib Frameworks include NOTICE VERSION
+            cd ${{ github.workspace }}/webrtc-src/src
+          done
 
       - name: Upload macOS arm64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: macos-arm64
-          path: webrtc-src/src/libwebrtc-macos-arm64-*.zip
-
-      - name: Create macOS x64 artifact
-        run: |
-          cd webrtc-src/src
-          VERSION=${{ needs.check-version.outputs.new_version }}
-          mkdir -p output-x64-${VERSION}/include output-x64-${VERSION}/lib output-x64-${VERSION}/Frameworks
-          cp -R out_macos_x64/WebRTC.framework output-x64-${VERSION}/Frameworks/ || true
-          cp -R out_macos_x64/WebRTC.dSYM output-x64-${VERSION}/Frameworks/ || true
-          cp out_macos_x64/obj/libwebrtc.a output-x64-${VERSION}/lib/libwebrtc-x64.a || true
-          cp -R out_macos_x64/include/* output-x64-${VERSION}/include/ 2>/dev/null || true
-          cp LICENSE output-x64-${VERSION}/ 2>/dev/null || true
-          cp VERSION output-x64-${VERSION}/ 2>/dev/null || true
-          zip -r -0 libwebrtc-macos-x64-${VERSION}.zip output-x64-${VERSION}/*
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-arm64-*.zip
 
       - name: Upload macOS x64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: macos-x64
-          path: webrtc-src/src/libwebrtc-macos-x64-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-x64-*.zip
 
   build-linux:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
@@ -707,6 +720,7 @@ jobs:
           fi
           echo "Extracted contents:"
           ls -la /tmp/webrtc-src/
+          rm -f ${{ github.workspace }}/webrtc-src.tar.*
 
       - name: Checkout patches
         run: |
@@ -833,7 +847,7 @@ jobs:
             echo "$VERSION" > $OUTPUT_DIR/VERSION
             
             cd $OUTPUT_DIR
-            zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$arch-${VERSION}.zip lib include NOTICE VERSION
+            zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$arch-${VERSION}.zip lib include NOTICE VERSION
             cd ${{ github.workspace }}/webrtc-src/src
           done
 
@@ -841,29 +855,29 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: linux-arm64
-          path: webrtc-src/src/libwebrtc-linux-arm64-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-arm64-*.zip
 
       - name: Upload Linux armv7 artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-armv7
-          path: webrtc-src/src/libwebrtc-linux-armv7-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-armv7-*.zip
 
       - name: Upload Linux x64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-x64
-          path: webrtc-src/src/libwebrtc-linux-x64-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-x64-*.zip
 
       - name: Upload Linux x86 artifact
         uses: actions/upload-artifact@v6
         with:
           name: linux-x86
-          path: webrtc-src/src/libwebrtc-linux-x86-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-x86-*.zip
 
   build-windows:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
-    if: false
+    if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
     timeout-minutes: 240
     env:
@@ -909,6 +923,7 @@ jobs:
           }
           Write-Output "Extracted contents:"
           Get-ChildItem "$env:TEMP\webrtc-src"
+          Remove-Item -Force "${{ github.workspace }}\webrtc-src.tar*" -ErrorAction SilentlyContinue
 
       - name: Checkout patches
         run: |
@@ -927,24 +942,6 @@ jobs:
           Move-Item -Force "$env:TEMP\webrtc-src\webrtc-src" "${{ github.workspace }}\webrtc-src"
           Write-Output "webrtc-src moved to workspace:"
           Get-ChildItem "${{ github.workspace }}\webrtc-src"
-
-      - name: Apply patches
-        run: |
-          function Apply-Patch {
-            param([string]$Patch)
-            $result = git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "$Patch" 2>&1
-            if ($LASTEXITCODE -eq 0) {
-              Write-Output "✓ Applied: $(Split-Path $Patch -Leaf)"
-            } else {
-              Write-Output "⚠ Warning: $(Split-Path $Patch -Leaf) failed or already applied" 2>&1
-            }
-          }
-          Set-Location "${{ github.workspace }}/webrtc-src/src"
-          Apply-Patch "${{ github.workspace }}/patches/4k.patch"
-          Apply-Patch "${{ github.workspace }}/patches/add_licenses.patch"
-          Apply-Patch "${{ github.workspace }}/patches/windows_fix_abseil.patch"
-          Apply-Patch "${{ github.workspace }}/patches/windows_fix_optional.patch"
-          Apply-Patch "${{ github.workspace }}/patches/windows_add_deps.patch"
 
       - name: Restore depot_tools
         id: cache-depot-tools
@@ -968,99 +965,122 @@ jobs:
           gclient sync --force
           gclient runhooks
 
-      - name: Build Windows x64
+      - name: Apply patches
+        run: |
+          function Apply-Patch {
+            param([string]$Patch)
+            $result = git apply -p1 --ignore-space-change --ignore-whitespace --whitespace=nowarn --reject "$Patch" 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Output "✓ Applied: $(Split-Path $Patch -Leaf)"
+            } else {
+              Write-Output "⚠ Warning: $(Split-Path $Patch -Leaf) failed or already applied" 2>&1
+            }
+          }
+          Set-Location "${{ github.workspace }}/webrtc-src/src"
+          Apply-Patch "${{ github.workspace }}/patches/4k.patch"
+          Apply-Patch "${{ github.workspace }}/patches/add_licenses.patch"
+          Apply-Patch "${{ github.workspace }}/patches/windows_fix_abseil.patch"
+          Apply-Patch "${{ github.workspace }}/patches/windows_fix_optional.patch"
+          Apply-Patch "${{ github.workspace }}/patches/windows_add_deps.patch"
+
+      - name: Build Windows (x64, x86)
         run: |
           Set-Location "${{ github.workspace }}/webrtc-src/src"
-          Write-Output "Starting Windows x64 build..."
-          "target_os = `"win`""
-          "target_cpu = `"x64`""
-          "is_debug = false"
-          "treat_warnings_as_errors = false"
-          "rtc_use_h264 = false"
-          "rtc_include_tests = false"
-          "rtc_build_tools = false"
-          "rtc_build_examples = false"
-          "rtc_use_perfetto = false"
-          "is_component_build = false"
-          "use_rtti = true"
-          "strip_debug_info = true"
-          "symbol_level = 0"
-          "use_custom_libcxx = false"
-          "libyuv_include_tests = false" | Out-File -Encoding ASCII args.txt
-          gn gen out/Release --args-file=args.txt
-          Write-Output "Running ninja..."
-          ninja -C out/Release -j16
-          if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
-
-      - name: Build Windows x86
-        run: |
-          Set-Location "${{ github.workspace }}/webrtc-src/src"
-          Write-Output "Starting Windows x86 build..."
-          "target_os = `"win`""
-          "target_cpu = `"x86`""
-          "is_debug = false"
-          "treat_warnings_as_errors = false"
-          "rtc_use_h264 = false"
-          "rtc_include_tests = false"
-          "rtc_build_tools = false"
-          "rtc_build_examples = false"
-          "rtc_use_perfetto = false"
-          "is_component_build = false"
-          "use_rtti = true"
-          "strip_debug_info = true"
-          "symbol_level = 0"
-          "use_custom_libcxx = false"
-          "libyuv_include_tests = false" | Out-File -Encoding ASCII args.txt
-          gn gen out/Release-x86 --args-file=args.txt
-          Write-Output "Running ninja..."
-          ninja -C out/Release-x86 -j16
-          if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
-
-      - name: Create Windows x64 artifact
-        run: |
-          Set-Location webrtc-src/src
-          Write-Output "Checking build output..."
-          Get-ChildItem out/Release/obj -ErrorAction SilentlyContinue | Select-Object -First 10
           
+          $builds = @(
+            @{ arch = "x64"; cpu = "x64"; debug = $true; out = "Debug" },
+            @{ arch = "x64"; cpu = "x64"; debug = $false; out = "Release" },
+            @{ arch = "x86"; cpu = "x86"; debug = $true; out = "Debug-x86" },
+            @{ arch = "x86"; cpu = "x86"; debug = $false; out = "Release-x86" }
+          )
+          
+          foreach ($build in $builds) {
+            $isDebug = $build.debug
+            $debugStr = if ($isDebug) { "debug" } else { "release" }
+            $stripDebug = if ($isDebug) { "false" } else { "true" }
+            $symLevel = if ($isDebug) { "2" } else { "0" }
+            $args = "target_os=`"win`" target_cpu=`"$($build.cpu)`" is_debug=$isDebug treat_warnings_as_errors=false rtc_use_h264=false rtc_include_tests=false rtc_build_tools=false rtc_build_examples=false rtc_use_perfetto=false is_component_build=false use_rtti=true strip_debug_info=$stripDebug symbol_level=$symLevel use_custom_libcxx=false libyuv_include_tests=false"
+            $args | Out-File -Encoding ASCII args.txt
+            
+            Write-Output "Building Windows $($build.arch) ($debugStr)..."
+            gn gen "out/$($build.out)" --args-file=args.txt
+            Write-Output "Running ninja..."
+            ninja -C "out/$($build.out)" -j16
+            if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
+          }
+
+      - name: Create Windows artifacts
+        run: |
+          Set-Location "${{ github.workspace }}/webrtc-src/src"
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
-          New-Item -ItemType Directory -Force -Path lib-x64 | Out-Null
-          if (Test-Path out/Release/obj/webrtc.lib) {
-            Copy-Item out/Release/obj/webrtc.lib lib-x64/webrtc-x64.lib
+          
+          $archs = @("x64", "x86")
+          foreach ($arch in $archs) {
+            $OUTPUT_DIR = "${{ github.workspace }}\output-win-$arch-$VERSION"
+            
+            New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\debug" | Out-Null
+            New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\release" | Out-Null
+            New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\include" | Out-Null
+            
+            if ($arch -eq "x64") {
+              $releaseDir = "out/Release"
+              $debugDir = "out/Debug"
+            } else {
+              $releaseDir = "out/Release-x86"
+              $debugDir = "out/Debug-x86"
+            }
+            
+            if ($debugDir -and (Test-Path "$debugDir/obj/webrtc.lib")) {
+              Copy-Item "$debugDir/obj/webrtc.lib" "$OUTPUT_DIR\debug\webrtc.lib"
+            }
+            if (Test-Path "$releaseDir/obj/webrtc.lib") {
+              Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
+            }
+            
+            Write-Output "Copying headers..."
+            Set-Location "${{ github.workspace }}/webrtc-src/src"
+            
+            $tempSrc = "$env:TEMP\webrtc-headers-$arch"
+            Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $tempSrc -Force | Out-Null
+            
+            Get-ChildItem -Recurse -Include *.h,*.hpp,*.inc -File | Copy-Item -Destination $tempSrc -ErrorAction SilentlyContinue
+            
+            Get-ChildItem -Recurse -Directory | ForEach-Object {
+              $relPath = $_.FullName.Replace("${{ github.workspace }}/webrtc-src\src\", "")
+              if ($relPath -match "^(rtc_base|api|pc|system_wrappers|media|modules)") {
+                New-Item -ItemType Directory -Path "$tempSrc\$relPath" -Force -ErrorAction SilentlyContinue | Out-Null
+                Copy-Item "$($_.FullName)\*" -Destination "$tempSrc\$relPath\" -Recurse -ErrorAction SilentlyContinue
+              }
+            }
+            
+            Copy-Item -Recurse $tempSrc "$OUTPUT_DIR\include\" -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
+            
+            "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
+            Copy-Item LICENSE.md "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
+            
+            Set-Location "$OUTPUT_DIR"
+            Get-ChildItem -ErrorAction SilentlyContinue
+            if (Get-Command 7z -ErrorAction SilentlyContinue) {
+              7z a -mx=9 "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$arch-$VERSION.zip" * -r
+            } else {
+              Compress-Archive -Path * -DestinationPath "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$arch-$VERSION.zip" -CompressionLevel Optimal -Force
+            }
+            Set-Location "${{ github.workspace }}/webrtc-src/src"
           }
-          Get-ChildItem lib-x64/ -ErrorAction SilentlyContinue | Select-Object Name
-          if ((Get-ChildItem lib-x64/ -ErrorAction SilentlyContinue).Count -eq 0) {
-            throw "lib folder is empty!"
-          }
-          Compress-Archive -Path lib-x64/* -DestinationPath "libwebrtc-win-x64-${VERSION}.zip" -CompressionLevel NoCompression -Force
 
       - name: Upload Windows x64 artifact
         uses: actions/upload-artifact@v6
         with:
           name: windows-x64
-          path: webrtc-src/src/libwebrtc-win-x64-*.zip
-
-      - name: Create Windows x86 artifact
-        run: |
-          Set-Location webrtc-src/src
-          Write-Output "Checking build output..."
-          Get-ChildItem out/Release-x86/obj -ErrorAction SilentlyContinue | Select-Object -First 10
-          
-          $VERSION = "${{ needs.check-version.outputs.new_version }}"
-          New-Item -ItemType Directory -Force -Path lib-x86 | Out-Null
-          if (Test-Path out/Release-x86/obj/webrtc.lib) {
-            Copy-Item out/Release-x86/obj/webrtc.lib lib-x86/webrtc-x86.lib
-          }
-          Get-ChildItem lib-x86/ -ErrorAction SilentlyContinue | Select-Object Name
-          if ((Get-ChildItem lib-x86/ -ErrorAction SilentlyContinue).Count -eq 0) {
-            throw "lib folder is empty!"
-          }
-          Compress-Archive -Path lib-x86/* -DestinationPath "libwebrtc-win-x86-${VERSION}.zip" -CompressionLevel NoCompression -Force
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-x64-*.zip
 
       - name: Upload Windows x86 artifact
         uses: actions/upload-artifact@v6
         with:
           name: windows-x86
-          path: webrtc-src/src/libwebrtc-win-x86-*.zip
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-x86-*.zip
 
   release:
     needs: [check-version, fetch-webrtc, package-headers, build-android, build-ios, build-macos, build-linux, build-windows]
