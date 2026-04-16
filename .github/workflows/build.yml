@@ -330,7 +330,7 @@ jobs:
 
           # Configure gclient for Android
           gclient config https://webrtc.googlesource.com/src.git
-          echo 'target_os = ["android"]' > .gclient
+          echo 'target_os = ["android"]' >> .gclient
           
           gclient sync --force
           gclient runhooks
@@ -537,7 +537,7 @@ jobs:
 
           # Configure gclient for iOS
           gclient config https://webrtc.googlesource.com/src.git
-          echo 'target_os = ["ios"]' > .gclient
+          echo 'target_os = ["ios"]' >> .gclient
 
           gclient sync --force
           gclient runhooks
@@ -704,7 +704,7 @@ jobs:
 
           # Configure gclient for macOS
           gclient config https://webrtc.googlesource.com/src.git
-          echo 'target_os = ["mac"]' > .gclient
+          echo 'target_os = ["mac"]' >> .gclient
 
           gclient sync --force
           gclient runhooks
@@ -885,7 +885,7 @@ jobs:
 
           # Configure gclient for Linux
           gclient config https://webrtc.googlesource.com/src.git
-          echo 'target_os = ["linux"]' > .gclient
+          echo 'target_os = ["linux"]' >> .gclient
 
           gclient sync --force
           gclient runhooks
@@ -1112,7 +1112,7 @@ jobs:
 
           # Configure gclient for Windows
           gclient config https://webrtc.googlesource.com/src.git
-          'target_os = ["win"]' | Out-File -FilePath .gclient -Encoding ASCII
+          'target_os = ["win"]' | Out-File -FilePath .gclient -Append -Encoding ASCII
 
           gclient sync --force
           gclient runhooks
