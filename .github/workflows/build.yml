@@ -46,7 +46,6 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 240
     steps:
       - name: Cache depot_tools
         id: cache-depot-tools
@@ -66,7 +65,6 @@ jobs:
     needs: [check-version, prepare-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 240
     steps:
       - name: Check for cached WebRTC source
         id: cache-webrtc
@@ -156,7 +154,6 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 240
     steps:
       - name: Free disk space
         run: |
@@ -231,7 +228,6 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 240
     steps:
       - name: Free disk space
         run: |
@@ -443,7 +439,6 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
-    timeout-minutes: 240
     steps:
       - name: Free disk space
         run: |
@@ -620,7 +615,6 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
-    timeout-minutes: 240
     steps:
       - name: Free disk space
         run: |
@@ -805,7 +799,6 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 240
     steps:
       - name: Free disk space
         run: |
@@ -1027,7 +1020,6 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
-    timeout-minutes: 240
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
     steps:
@@ -1157,21 +1149,15 @@ jobs:
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           
           $builds = @(
-            @{ arch = "x64"; cpu = "x64"; debug = $true; out = "Debug" },
-            @{ arch = "x64"; cpu = "x64"; debug = $false; out = "Release" },
-            @{ arch = "x86"; cpu = "x86"; debug = $true; out = "Debug-x86" },
-            @{ arch = "x86"; cpu = "x86"; debug = $false; out = "Release-x86" }
+            @{ arch = "x64"; cpu = "x64"; out = "Release" },
+            @{ arch = "x86"; cpu = "x86"; out = "Release-x86" }
           )
           
           foreach ($build in $builds) {
-            $isDebug = $build.debug
-            $debugStr = if ($isDebug) { "debug" } else { "release" }
-            $stripDebug = if ($isDebug) { "false" } else { "true" }
-            $symLevel = if ($isDebug) { "2" } else { "0" }
-            $args = "target_os=`"win`" target_cpu=`"$($build.cpu)`" is_debug=$isDebug treat_warnings_as_errors=false rtc_use_h264=false rtc_include_tests=false rtc_build_tools=false rtc_build_examples=false rtc_use_perfetto=false is_component_build=false use_rtti=true strip_debug_info=$stripDebug symbol_level=$symLevel use_custom_libcxx=false libyuv_include_tests=false"
+            $args = "target_os=`"win`" target_cpu=`"$($build.cpu)`" is_debug=false treat_warnings_as_errors=false rtc_use_h264=false rtc_include_tests=false rtc_build_tools=false rtc_build_examples=false rtc_use_perfetto=false is_component_build=false use_rtti=true strip_debug_info=true symbol_level=0 use_custom_libcxx=false libyuv_include_tests=false"
             $args | Out-File -Encoding ASCII args.txt
             
-            Write-Output "Building Windows $($build.arch) ($debugStr)..."
+            Write-Output "Building Windows $($build.arch) release..."
             gn gen "out/$($build.out)" --args-file=args.txt
             Write-Output "Running ninja..."
             ninja -C "out/$($build.out)" -j16
@@ -1187,21 +1173,15 @@ jobs:
           foreach ($arch in $archs) {
             $OUTPUT_DIR = "${{ github.workspace }}\output-win-$arch-$VERSION"
             
-            New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\debug" | Out-Null
             New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\release" | Out-Null
             New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\include" | Out-Null
             
             if ($arch -eq "x64") {
               $releaseDir = "out/Release"
-              $debugDir = "out/Debug"
             } else {
               $releaseDir = "out/Release-x86"
-              $debugDir = "out/Debug-x86"
             }
             
-            if ($debugDir -and (Test-Path "$debugDir/obj/webrtc.lib")) {
-              Copy-Item "$debugDir/obj/webrtc.lib" "$OUTPUT_DIR\debug\webrtc.lib"
-            }
             if (Test-Path "$releaseDir/obj/webrtc.lib") {
               Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
             }
@@ -1255,7 +1235,6 @@ jobs:
     needs: [check-version, fetch-webrtc, package-headers, build-android, build-ios, build-macos, build-linux, build-windows]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v7
