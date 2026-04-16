@@ -94,6 +94,13 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+          echo "Cleaning package caches..."
+          sudo rm -rf /var/cache/apt/archives/* || true
+          rm -rf ~/.cache/pip/* || true
+          rm -rf ~/go/pkg/mod/cache/* || true
+          echo "Cleaning Docker..."
+          docker system prune -af || true
+          docker builder prune -af || true
           echo "Disk space freed"
 
       - name: Restore depot_tools
@@ -169,6 +176,13 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+          echo "Cleaning package caches..."
+          sudo rm -rf /var/cache/apt/archives/* || true
+          rm -rf ~/.cache/pip/* || true
+          rm -rf ~/go/pkg/mod/cache/* || true
+          echo "Cleaning Docker..."
+          docker system prune -af || true
+          docker builder prune -af || true
           echo "Disk space freed"
 
       - name: Restore WebRTC source
@@ -243,6 +257,13 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+          echo "Cleaning package caches..."
+          sudo rm -rf /var/cache/apt/archives/* || true
+          rm -rf ~/.cache/pip/* || true
+          rm -rf ~/go/pkg/mod/cache/* || true
+          echo "Cleaning Docker..."
+          docker system prune -af || true
+          docker builder prune -af || true
           echo "Disk space freed"
 
       - name: Restore WebRTC source
@@ -450,12 +471,16 @@ jobs:
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
           rm -rf ~/Library/Developer/Xcode/Archives/*
           rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/* 2>/dev/null || true
-          echo "Removing iOS Simulator runtimes..."
+          echo "Removing iOS Simulator data..."
+          rm -rf ~/Library/Developer/CoreSimulator/Devices/*
           sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/ || true
           echo "Removing package manager caches..."
           rm -rf ~/.npm/*
           rm -rf ~/Library/Caches/CocoaPods/*
           rm -rf ~/.gem/cache/*
+          rm -rf ~/Library/Caches/Homebrew/downloads/* || true
+          rm -rf ~/Library/Caches/org.swift.swiftpm/* || true
+          rm -rf ~/.yarn/cache/* || true
           echo "Disk space freed"
 
       - name: Restore WebRTC source
@@ -626,12 +651,16 @@ jobs:
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
           rm -rf ~/Library/Developer/Xcode/Archives/*
           rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/* 2>/dev/null || true
-          echo "Removing iOS Simulator runtimes..."
+          echo "Removing iOS Simulator data..."
+          rm -rf ~/Library/Developer/CoreSimulator/Devices/*
           sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/ || true
           echo "Removing package manager caches..."
           rm -rf ~/.npm/*
           rm -rf ~/Library/Caches/CocoaPods/*
           rm -rf ~/.gem/cache/*
+          rm -rf ~/Library/Caches/Homebrew/downloads/* || true
+          rm -rf ~/Library/Caches/org.swift.swiftpm/* || true
+          rm -rf ~/.yarn/cache/* || true
           echo "Disk space freed"
 
       - name: Restore WebRTC source
@@ -814,6 +843,13 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+          echo "Cleaning package caches..."
+          sudo rm -rf /var/cache/apt/archives/* || true
+          rm -rf ~/.cache/pip/* || true
+          rm -rf ~/go/pkg/mod/cache/* || true
+          echo "Cleaning Docker..."
+          docker system prune -af || true
+          docker builder prune -af || true
           echo "Disk space freed"
 
       - name: Restore WebRTC source
@@ -1032,6 +1068,15 @@ jobs:
           Write-Output "Removing unused tools from runner..."
           Remove-Item -Recurse -Force "C:\Go" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:TEMP\chocolatey" -ErrorAction SilentlyContinue
+          Write-Output "Cleaning package manager caches..."
+          Remove-Item -Recurse -Force "$env:LOCALAPPDATA\nuget\packages" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:APPDATA\npm" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:LOCALAPPDATA\pip\cache" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:USERPROFILE\.nuget\packages" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Azure" -ErrorAction SilentlyContinue
+          Write-Output "Cleaning temp files..."
+          Remove-Item -Recurse -Force "$env:TEMP\*" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Temp\*" -ErrorAction SilentlyContinue
           Write-Output "Disk space freed"
 
       - name: Restore WebRTC source
