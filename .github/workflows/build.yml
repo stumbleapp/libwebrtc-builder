@@ -451,8 +451,16 @@ jobs:
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /Library/Java/JavaVirtualMachines || true
           sudo rm -rf /usr/lib/jvm || true
-          echo "Removing Xcode DerivedData to save space..."
+          echo "Removing Xcode caches..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          rm -rf ~/Library/Developer/Xcode/Archives/*
+          rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/* 2>/dev/null || true
+          echo "Removing iOS Simulator runtimes..."
+          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/ || true
+          echo "Removing package manager caches..."
+          rm -rf ~/.npm/*
+          rm -rf ~/Library/Caches/CocoaPods/*
+          rm -rf ~/.gem/cache/*
           echo "Disk space freed"
 
       - name: Restore WebRTC source
@@ -618,8 +626,18 @@ jobs:
         run: |
           echo "Removing unused runtimes from runner..."
           sudo rm -rf /usr/share/dotnet || true
-          echo "Removing Xcode DerivedData to save space..."
+          sudo rm -rf /Library/Java/JavaVirtualMachines || true
+          sudo rm -rf /usr/lib/jvm || true
+          echo "Removing Xcode caches..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
+          rm -rf ~/Library/Developer/Xcode/Archives/*
+          rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/* 2>/dev/null || true
+          echo "Removing iOS Simulator runtimes..."
+          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/ || true
+          echo "Removing package manager caches..."
+          rm -rf ~/.npm/*
+          rm -rf ~/Library/Caches/CocoaPods/*
+          rm -rf ~/.gem/cache/*
           echo "Disk space freed"
 
       - name: Restore WebRTC source
