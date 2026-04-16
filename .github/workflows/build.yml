@@ -1132,9 +1132,7 @@ jobs:
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           Apply-Patch "${{ github.workspace }}/patches/4k.patch"
           Apply-Patch "${{ github.workspace }}/patches/add_licenses.patch"
-          Apply-Patch "${{ github.workspace }}/patches/windows_fix_abseil.patch"
-          Apply-Patch "${{ github.workspace }}/patches/windows_fix_optional.patch"
-          Apply-Patch "${{ github.workspace }}/patches/windows_add_deps.patch"
+          exit 0
 
       - name: Build Windows (x64, x86)
         run: |
