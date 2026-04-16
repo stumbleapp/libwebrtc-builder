@@ -729,7 +729,7 @@ jobs:
           for arch in arm64 x64; do
             echo "Building macOS $arch (debug)..."
             mkdir -p out_macos_${arch}_debug
-            gn gen out_macos_${arch}_debug --args='target_os="mac" target_cpu="$arch" enable_stripping=true enable_dsyms=true is_debug=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target="10.15"'
+            gn gen out_macos_${arch}_debug --args="target_os=\"mac\" target_cpu=\"$arch\" enable_stripping=true enable_dsyms=true is_debug=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target=\"10.15\""
             ninja -C out_macos_${arch}_debug
             ninja -C out_macos_${arch}_debug api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
             cd out_macos_${arch}_debug/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
@@ -737,7 +737,7 @@ jobs:
             
             echo "Building macOS $arch (release)..."
             mkdir -p out_macos_$arch
-            gn gen out_macos_$arch --args='target_os="mac" target_cpu="$arch" enable_stripping=true enable_dsyms=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target="10.15"'
+            gn gen out_macos_$arch --args="target_os=\"mac\" target_cpu=\"$arch\" enable_stripping=true enable_dsyms=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target=\"10.15\""
             ninja -C out_macos_$arch
             ninja -C out_macos_$arch api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
             cd out_macos_$arch/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
