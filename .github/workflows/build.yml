@@ -329,8 +329,8 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src
 
           # Configure gclient for Android
+          gclient config https://webrtc.googlesource.com/src.git
           echo 'target_os = ["android"]' > .gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> .gclient
           
           gclient sync --force
           gclient runhooks
@@ -536,8 +536,8 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src
 
           # Configure gclient for iOS
+          gclient config https://webrtc.googlesource.com/src.git
           echo 'target_os = ["ios"]' > .gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> .gclient
 
           gclient sync --force
           gclient runhooks
@@ -703,8 +703,8 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src
 
           # Configure gclient for macOS
+          gclient config https://webrtc.googlesource.com/src.git
           echo 'target_os = ["mac"]' > .gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> .gclient
 
           gclient sync --force
           gclient runhooks
@@ -884,13 +884,14 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src
 
           # Configure gclient for Linux
+          gclient config https://webrtc.googlesource.com/src.git
           echo 'target_os = ["linux"]' > .gclient
-          echo 'solutions = [{"name": "src", "url": "https://webrtc.googlesource.com/src.git", "deps_file": "DEPS", "managed": False}]' >> .gclient
 
           gclient sync --force
           gclient runhooks
-          
-          # Install sysroots for all architectures
+
+      - name: Install sysroots
+        run: |
           python3 build/linux/sysroot_scripts/install-sysroot.py --all
 
       - name: Apply patches
@@ -1110,8 +1111,8 @@ jobs:
           Set-Location "${{ github.workspace }}/webrtc-src"
 
           # Configure gclient for Windows
-          "target_os = [`win`]" | Out-File -FilePath .gclient -Encoding ASCII
-          "solutions = [{`name`: `src`, `url`: `https://webrtc.googlesource.com/src.git`, `deps_file`: `DEPS`, `managed`: False}]" | Out-File -FilePath .gclient -Append -Encoding ASCII
+          gclient config https://webrtc.googlesource.com/src.git
+          'target_os = ["win"]' | Out-File -FilePath .gclient -Encoding ASCII
 
           gclient sync --force
           gclient runhooks
