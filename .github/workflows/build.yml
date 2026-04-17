@@ -418,21 +418,26 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
           
+          mkdir -p $OUTPUT_DIR/aar
+          mkdir -p $OUTPUT_DIR/jar
+          mkdir -p $OUTPUT_DIR/include
+          
           for arch in arm64-v8a armeabi-v7a x86_64 x86; do
             mkdir -p $OUTPUT_DIR/lib/$arch
           done
-          mkdir -p $OUTPUT_DIR/include
+          
+          cp out/libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc.aar 2>/dev/null || true
+          
+          if [ -f out/libwebrtc.jar ]; then
+            cp out/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
+          elif [ -f out/aar_extracted/classes.jar ]; then
+            cp out/aar_extracted/classes.jar $OUTPUT_DIR/jar/libwebrtc.jar
+          fi
           
           for arch in arm64-v8a armeabi-v7a x86_64 x86; do
             cp out/static/$arch/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
             cp out/aar_extracted/libs/$arch/*.so $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
           done
-          
-          if [ -f out/libwebrtc.jar ]; then
-            cp out/libwebrtc.jar $OUTPUT_DIR/libwebrtc.jar
-          elif [ -f out/aar_extracted/classes.jar ]; then
-            cp out/aar_extracted/classes.jar $OUTPUT_DIR/libwebrtc.jar
-          fi
           
           rsync -amv \
             '--include=*/' \
@@ -444,16 +449,16 @@ jobs:
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/.git 2>/dev/null || true
           
-          cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           cd $OUTPUT_DIR
-          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip lib libwebrtc.jar NOTICE VERSION include
+          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip aar jar lib include NOTICE VERSION
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v6
         with:
-          name: android
+          name: libwebrtc-android
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-*.zip
 
   build-ios:
@@ -614,7 +619,7 @@ jobs:
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
-          cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           
           cd $OUTPUT_DIR
           zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
@@ -622,7 +627,7 @@ jobs:
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ios
+          name: libwebrtc-ios
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-*.zip
 
   build-macos:
@@ -797,7 +802,8 @@ jobs:
           cp -R out_macos_$ARCH/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
-          cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          
+          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           
           cd $OUTPUT_DIR
           zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
@@ -805,7 +811,7 @@ jobs:
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v6
         with:
-          name: macos-${{ matrix.arch }}
+          name: libwebrtc-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-${{ matrix.arch }}-*.zip
 
   build-linux:
@@ -1003,16 +1009,16 @@ jobs:
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/.git 2>/dev/null || true
           
-          cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
             
-            cd $OUTPUT_DIR
-            zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
+          cd $OUTPUT_DIR
+          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v6
         with:
-          name: linux-${{ matrix.arch }}
+          name: libwebrtc-linux-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-${{ matrix.arch }}-*.zip
 
   build-windows:
@@ -1214,7 +1220,7 @@ jobs:
           Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
           
           "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
-          Copy-Item LICENSE.md "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
+          Copy-Item "${{ github.workspace }}\LICENSE.md" "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
           
           Set-Location "$OUTPUT_DIR"
           Get-ChildItem -ErrorAction SilentlyContinue
@@ -1228,7 +1234,7 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v6
         with:
-          name: windows-${{ matrix.arch }}
+          name: libwebrtc-windows-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-${{ matrix.arch }}-*.zip
 
   release:
