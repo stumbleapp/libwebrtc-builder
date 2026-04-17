@@ -583,58 +583,47 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src/src
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
-      - name: Build iOS (arm64, x64)
+      - name: Build iOS
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
-          for arch in arm64 x64; do
-            echo "Building iOS $arch..."
-            mkdir -p out_ios_$arch
-            cd tools_webrtc/ios
-            vpython3 build_ios_libs.py --output-dir out_ios_$arch --build_config release --arch $arch --extra-gn-args 'is_debug=false rtc_libvpx_build_vp9=true rtc_include_tests=false rtc_build_examples=false rtc_build_tools=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false ios_deployment_target="15.0"'
-            ls -la out_ios_$arch/
-            cd ${{ github.workspace }}/webrtc-src/src
-            
-            echo "Cleaning DerivedData between arch builds to save space..."
-            rm -rf ~/Library/Developer/Xcode/DerivedData/*
-          done
+          echo "Building iOS (arm64, x64 combined)..."
+          mkdir -p out_ios
+          cd tools_webrtc/ios
+          vpython3 build_ios_libs.py --output-dir out_ios --build_config release --arch arm64 --arch x64 --extra-gn-args 'is_debug=false rtc_libvpx_build_vp9=true rtc_include_tests=false rtc_build_examples=false rtc_build_tools=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false ios_deployment_target="15.0"'
+          ls -la out_ios/
+          cd ${{ github.workspace }}/webrtc-src/src
+          
+          echo "Cleaning DerivedData to save space..."
+          rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
       - name: Create iOS artifacts
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
           
-          for arch in arm64 x64; do
-            OUTPUT_DIR="${{ github.workspace }}/output-ios-$arch-${VERSION}"
-            mkdir -p $OUTPUT_DIR
-            cd tools_webrtc/ios/out_ios_$arch
-            
-            test -d WebRTC.xcframework
-            cp -r WebRTC.xcframework $OUTPUT_DIR/ 2>/dev/null || true
-            cp -r WebRTC.xcframework/* $OUTPUT_DIR/ 2>/dev/null || true
-            
-            cd ${{ github.workspace }}/webrtc-src/src
-            
-            echo "$VERSION" > $OUTPUT_DIR/VERSION
-            
-            cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
-            
-            cd $OUTPUT_DIR
-            zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-$arch-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
-            cd ${{ github.workspace }}/webrtc-src/src
-          done
+          OUTPUT_DIR="${{ github.workspace }}/output-ios-${VERSION}"
+          mkdir -p $OUTPUT_DIR
+          cd tools_webrtc/ios/out_ios
+          
+          test -d WebRTC.xcframework
+          cp -r WebRTC.xcframework $OUTPUT_DIR/ 2>/dev/null || true
+          cp -r WebRTC.xcframework/* $OUTPUT_DIR/ 2>/dev/null || true
+          
+          cd ${{ github.workspace }}/webrtc-src/src
+          
+          echo "$VERSION" > $OUTPUT_DIR/VERSION
+          
+          cp LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          
+          cd $OUTPUT_DIR
+          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
 
-      - name: Upload iOS arm64 artifact
+      - name: Upload iOS artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ios-arm64
-          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-arm64-*.zip
-
-      - name: Upload iOS x64 artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: ios-x64
-          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-x64-*.zip
+          name: ios
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-*.zip
 
   build-macos:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
