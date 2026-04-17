@@ -1056,8 +1056,20 @@ jobs:
     needs: [check-version, prepare-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            cpu: x64
+            out: Release
+          - arch: x86
+            cpu: x86
+            out: Release-x86
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
+      ARCH: ${{ matrix.arch }}
+      CPU: ${{ matrix.cpu }}
+      OUT: ${{ matrix.out }}
     steps:
       - name: Free disk space
         run: |
@@ -1189,92 +1201,72 @@ jobs:
           Apply-Patch "${{ github.workspace }}/patches/add_licenses.patch"
           exit 0
 
-      - name: Build Windows (x64, x86)
+      - name: Build Windows
         run: |
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           
-          $builds = @(
-            @{ arch = "x64"; cpu = "x64"; out = "Release" },
-            @{ arch = "x86"; cpu = "x86"; out = "Release-x86" }
-          )
+          $args = "target_os=`"win`" target_cpu=`"$env:CPU`" is_debug=false treat_warnings_as_errors=false rtc_use_h264=false rtc_include_tests=false rtc_build_tools=false rtc_build_examples=false rtc_use_perfetto=false is_component_build=false use_rtti=true strip_debug_info=true symbol_level=0 use_custom_libcxx=false libyuv_include_tests=false"
+          $args | Out-File -Encoding ASCII args.txt
           
-          foreach ($build in $builds) {
-            $args = "target_os=`"win`" target_cpu=`"$($build.cpu)`" is_debug=false treat_warnings_as_errors=false rtc_use_h264=false rtc_include_tests=false rtc_build_tools=false rtc_build_examples=false rtc_use_perfetto=false is_component_build=false use_rtti=true strip_debug_info=true symbol_level=0 use_custom_libcxx=false libyuv_include_tests=false"
-            $args | Out-File -Encoding ASCII args.txt
-            
-            Write-Output "Building Windows $($build.arch) release..."
-            gn gen "out/$($build.out)" --args-file=args.txt
-            Write-Output "Running ninja..."
-            ninja -C "out/$($build.out)" -j16
-            if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
-          }
+          Write-Output "Building Windows $env:ARCH release..."
+          gn gen "out/$env:OUT" --args-file=args.txt
+          Write-Output "Running ninja..."
+          ninja -C "out/$env:OUT" -j16
+          if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
       - name: Create Windows artifacts
         run: |
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
           
-          $archs = @("x64", "x86")
-          foreach ($arch in $archs) {
-            $OUTPUT_DIR = "${{ github.workspace }}\output-win-$arch-$VERSION"
-            
-            New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\release" | Out-Null
-            New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\include" | Out-Null
-            
-            if ($arch -eq "x64") {
-              $releaseDir = "out/Release"
-            } else {
-              $releaseDir = "out/Release-x86"
-            }
-            
-            if (Test-Path "$releaseDir/obj/webrtc.lib") {
-              Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
-            }
-            
-            Write-Output "Copying headers..."
-            Set-Location "${{ github.workspace }}/webrtc-src/src"
-            
-            $tempSrc = "$env:TEMP\webrtc-headers-$arch"
-            Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
-            New-Item -ItemType Directory -Path $tempSrc -Force | Out-Null
-            
-            Get-ChildItem -Recurse -Include *.h,*.hpp,*.inc -File | Copy-Item -Destination $tempSrc -ErrorAction SilentlyContinue
-            
-            Get-ChildItem -Recurse -Directory | ForEach-Object {
-              $relPath = $_.FullName.Replace("${{ github.workspace }}/webrtc-src\src\", "")
-              if ($relPath -match "^(rtc_base|api|pc|system_wrappers|media|modules)") {
-                New-Item -ItemType Directory -Path "$tempSrc\$relPath" -Force -ErrorAction SilentlyContinue | Out-Null
-                Copy-Item "$($_.FullName)\*" -Destination "$tempSrc\$relPath\" -Recurse -ErrorAction SilentlyContinue
-              }
-            }
-            
-            Copy-Item -Recurse $tempSrc "$OUTPUT_DIR\include\" -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
-            
-            "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
-            Copy-Item LICENSE.md "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
-            
-            Set-Location "$OUTPUT_DIR"
-            Get-ChildItem -ErrorAction SilentlyContinue
-            if (Get-Command 7z -ErrorAction SilentlyContinue) {
-              7z a -mx=9 "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$arch-$VERSION.zip" * -r
-            } else {
-              Compress-Archive -Path * -DestinationPath "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$arch-$VERSION.zip" -CompressionLevel Optimal -Force
-            }
-            Set-Location "${{ github.workspace }}/webrtc-src/src"
+          $OUTPUT_DIR = "${{ github.workspace }}\output-win-$env:ARCH-$VERSION"
+          
+          New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\release" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\include" | Out-Null
+          
+          $releaseDir = "out/$env:OUT"
+          
+          if (Test-Path "$releaseDir/obj/webrtc.lib") {
+            Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
           }
+          
+          Write-Output "Copying headers..."
+          Set-Location "${{ github.workspace }}/webrtc-src/src"
+          
+          $tempSrc = "$env:TEMP\webrtc-headers-$env:ARCH"
+          Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $tempSrc -Force | Out-Null
+          
+          Get-ChildItem -Recurse -Include *.h,*.hpp,*.inc -File | Copy-Item -Destination $tempSrc -ErrorAction SilentlyContinue
+          
+          Get-ChildItem -Recurse -Directory | ForEach-Object {
+            $relPath = $_.FullName.Replace("${{ github.workspace }}/webrtc-src\src\", "")
+            if ($relPath -match "^(rtc_base|api|pc|system_wrappers|media|modules)") {
+              New-Item -ItemType Directory -Path "$tempSrc\$relPath" -Force -ErrorAction SilentlyContinue | Out-Null
+              Copy-Item "$($_.FullName)\*" -Destination "$tempSrc\$relPath\" -Recurse -ErrorAction SilentlyContinue
+            }
+          }
+          
+          Copy-Item -Recurse $tempSrc "$OUTPUT_DIR\include\" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
+          
+          "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
+          Copy-Item LICENSE.md "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
+          
+          Set-Location "$OUTPUT_DIR"
+          Get-ChildItem -ErrorAction SilentlyContinue
+          if (Get-Command 7z -ErrorAction SilentlyContinue) {
+            7z a -mx=9 "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" * -r
+          } else {
+            Compress-Archive -Path * -DestinationPath "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" -CompressionLevel Optimal -Force
+          }
+          Set-Location "${{ github.workspace }}/webrtc-src/src"
 
-      - name: Upload Windows x64 artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v6
         with:
-          name: windows-x64
-          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-x64-*.zip
-
-      - name: Upload Windows x86 artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: windows-x86
-          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-x86-*.zip
+          name: windows-${{ matrix.arch }}
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-${{ matrix.arch }}-*.zip
 
   release:
     needs: [check-version, fetch-webrtc, package-headers, build-android, build-ios, build-macos, build-linux, build-windows]
