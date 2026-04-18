@@ -81,13 +81,13 @@ jobs:
       - name: Fetch patches
         if: steps.cache-patches.outputs.cache-hit != 'true'
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} patches
-          cd patches
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} .patches-temp
+          cd .patches-temp
           git sparse-checkout set patches
+          rm -rf .git
           cd ..
-          rm -rf patches/.git
-          mv patches/patches .
-          rm -rf patches
+          mv .patches-temp/patches .
+          rm -rf .patches-temp
 
   fetch-webrtc:
     name: Grab WebRTC source if needed
@@ -174,7 +174,7 @@ jobs:
 
   package-headers:
     name: Package Headers
-    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
@@ -1130,14 +1130,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Update last built version
-        run: |
-          echo ${{ needs.check-version.outputs.new_version }} > .last-built-version
-
       - name: Checkout
         uses: actions/checkout@v5.0.1
         with:
           fetch-depth: 0
+
+      - name: Update last built version
+        run: |
+          echo ${{ needs.check-version.outputs.new_version }} > .last-built-version
 
       - name: Commit version update
         uses: stefanzweifel/git-auto-commit-action@v7.1.0
