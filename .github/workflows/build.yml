@@ -447,7 +447,13 @@ jobs:
       - name: Combine artifacts
         run: |
           echo "Getting version..."
-          VERSION=$(unzip -p artifacts/libwebrtc-android-arm64-v8a.zip aar/VERSION 2>/dev/null || echo "unknown")
+          cd artifacts
+          for f in *.zip; do
+            VERSION=$(unzip -p "$f" VERSION 2>/dev/null)
+            if [ -n "$VERSION" ]; then break; fi
+          done
+          cd ..
+          VERSION=${VERSION:-unknown}
           echo "Combining Android artifacts for version $VERSION"
           
           OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
@@ -462,10 +468,14 @@ jobs:
           done
           
           echo "Extracting AAR files..."
+          rm -rf /tmp/android_extracts
+          mkdir -p /tmp/android_extracts
           for zip in artifacts/libwebrtc-android-*.zip; do
             echo "Processing $zip"
-            unzip -q "$zip" -d /tmp/android_extract 2>/dev/null || true
+            unzip -q "$zip" -d /tmp/android_extracts 2>/dev/null || true
           done
+          
+          ls -la /tmp/android_extracts/
           
           echo "Creating combined AAR..."
           mkdir -p aar_combined
@@ -473,21 +483,21 @@ jobs:
           
           # Copy .so files per architecture
           for arch in $ARCHS; do
-            if [ -d "/tmp/android_extract/lib/$arch" ]; then
+            if [ -d "/tmp/android_extracts/lib/$arch" ]; then
               mkdir -p lib/$arch
-              cp -n /tmp/android_extract/lib/$arch/*.so lib/$arch/ 2>/dev/null || true
+              cp -n /tmp/android_extracts/lib/$arch/*.so lib/$arch/ 2>/dev/null || true
             fi
           done
           
           # Copy JAR
           mkdir -p classes
-          if [ -f "/tmp/android_extract/jar/libwebrtc.jar" ]; then
-            cp /tmp/android_extract/jar/libwebrtc.jar classes/libwebrtc.jar 2>/dev/null || true
+          if [ -f "/tmp/android_extracts/jar/libwebrtc.jar" ]; then
+            cp /tmp/android_extracts/jar/libwebrtc.jar classes/libwebrtc.jar 2>/dev/null || true
           fi
           
           # Copy AndroidManifest.xml from one of the extracted AARs
-          if [ -f "/tmp/android_extract/aar/AndroidManifest.xml" ]; then
-            cp /tmp/android_extract/aar/AndroidManifest.xml . 2>/dev/null || true
+          if [ -f "/tmp/android_extracts/aar/AndroidManifest.xml" ]; then
+            cp /tmp/android_extracts/aar/AndroidManifest.xml . 2>/dev/null || true
           fi
           
           jar cfM ../libwebrtc.aar AndroidManifest.xml classes lib 2>/dev/null || true
@@ -504,18 +514,18 @@ jobs:
             if [ -d "aar_combined/lib/$arch" ]; then
               cp -r aar_combined/lib/$arch/* $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
             fi
-            # Also copy static lib
-            if [ -f "/tmp/android_extract/lib/libwebrtc.a" ]; then
-              cp /tmp/android_extract/lib/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            # Also copy static lib (it's at lib/libwebrtc.a in each zip, but organized per-arch in output)
+            if [ -f "/tmp/android_extracts/lib/libwebrtc.a" ]; then
+              cp /tmp/android_extracts/lib/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
             fi
           done
           
           echo "Copying headers..."
-          if [ -d "/tmp/android_extract/include" ]; then
-            cp -r /tmp/android_extract/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+          if [ -d "/tmp/android_extracts/include" ]; then
+            cp -r /tmp/android_extracts/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
           fi
           
-          rm -rf /tmp/android_extract
+          rm -rf /tmp/android_extracts
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
