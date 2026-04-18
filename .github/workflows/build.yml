@@ -63,6 +63,31 @@ jobs:
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
           rm -rf depot_tools/.git
 
+  fetch-patches:
+    name: Grab patches if needed
+    needs: check-version
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-slim
+    steps:
+      - name: Check for cached patches
+        id: cache-patches
+        uses: actions/cache@v5.0.4
+        with:
+          path: patches
+          key: patches-${{ github.sha }}
+          enableCrossOsArchive: true
+          lookup-only: true
+
+      - name: Fetch patches
+        if: steps.cache-patches.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} patches-temp
+          cd patches-temp
+          git sparse-checkout set patches
+          mv patches ../patches
+          cd ..
+          rm -rf patches-temp
+
   fetch-webrtc:
     name: Grab WebRTC source if needed
     needs: [check-version, fetch-depot-tools]
@@ -152,7 +177,7 @@ jobs:
 
   package-headers:
     name: Package Headers
-    needs: [check-version, fetch-depot-tools, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
@@ -213,7 +238,6 @@ jobs:
             '--exclude=*' \
             . ../headers-output/ 2>/dev/null || true
           rm -rf ../headers-output/rtc_tools 2>/dev/null || true
-          rm -rf ../headers-output/.git 2>/dev/null || true
           
           cd ../headers-output
           zip -r -9 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip .
@@ -226,7 +250,7 @@ jobs:
 
   build-android:
     name: Build Android
-    needs: [check-version, fetch-depot-tools, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
@@ -262,11 +286,10 @@ jobs:
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Clean source for Android build
+      - name: Clean source files
         run: |
-          cd ${{ github.workspace }}
-          echo "Cleaning source for Android build (remove iOS/macOS/Windows specific code)..."
-          cd webrtc-src/src
+          cd ${{ github.workspace }}/webrtc-src/src
+          echo "Removing iOS/macOS/Windows specific code..."
           rm -rf tools_webrtc/ios
           rm -rf sdk/objc
           rm -rf sdk/mac
@@ -274,16 +297,13 @@ jobs:
           rm -rf build/toolchain/win*
           rm -rf testing/scripts/win*
 
-      - name: Checkout patches
-        run: |
-          rm -rf /tmp/patches-temp
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
-          cd /tmp/patches-temp
-          git sparse-checkout set patches
-          rm -rf ${{ github.workspace }}/patches
-          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
-          echo "After checkout:"
-          ls -la ${{ github.workspace }}/patches
+      - name: Fetch patches from cache
+        uses: actions/cache@v5.0.4
+        with:
+          path: patches
+          key: patches-${{ github.sha }}
+          restore-keys: patches-
+          enableCrossOsArchive: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
@@ -408,7 +428,6 @@ jobs:
             '--exclude=*' \
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
-          rm -rf $OUTPUT_DIR/include/.git 2>/dev/null || true
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
@@ -424,7 +443,7 @@ jobs:
 
   build-ios:
     name: Build iOS
-    needs: [check-version, fetch-depot-tools, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     steps:
@@ -460,11 +479,10 @@ jobs:
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Clean source for iOS build
+      - name: Clean source files
         run: |
-          cd ${{ github.workspace }}
-          echo "Cleaning source for iOS build (remove Android/Linux/Windows specific code)..."
-          cd webrtc-src/src
+          cd ${{ github.workspace }}/webrtc-src/src
+          echo "Removing Android/Linux/Windows specific code..."
           rm -rf tools_webrtc/android
           rm -rf build/android
           rm -rf build/linux
@@ -473,16 +491,13 @@ jobs:
           rm -rf build/config/win
           rm -rf build/toolchain/win*
 
-      - name: Checkout patches
-        run: |
-          rm -rf /tmp/patches-temp
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
-          cd /tmp/patches-temp
-          git sparse-checkout set patches
-          rm -rf ${{ github.workspace }}/patches
-          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
-          echo "After checkout:"
-          ls -la ${{ github.workspace }}/patches
+      - name: Fetch patches from cache
+        uses: actions/cache@v5.0.4
+        with:
+          path: patches
+          key: patches-${{ github.sha }}
+          restore-keys: patches-
+          enableCrossOsArchive: true
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -568,7 +583,7 @@ jobs:
 
   build-macos:
     name: Build macOS
-    needs: [check-version, fetch-depot-tools, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     strategy:
@@ -611,11 +626,10 @@ jobs:
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Clean source for macOS build
+      - name: Clean source files
         run: |
-          cd ${{ github.workspace }}
-          echo "Cleaning source for macOS build (remove Android/iOS/Linux/Windows specific code)..."
-          cd webrtc-src/src
+          cd ${{ github.workspace }}/webrtc-src/src
+          echo "Removing Android/iOS/Linux/Windows specific code..."
           rm -rf tools_webrtc/android
           rm -rf build/android
           rm -rf tools_webrtc/ios
@@ -624,16 +638,13 @@ jobs:
           rm -rf build/config/win
           rm -rf build/toolchain/win*
 
-      - name: Checkout patches
-        run: |
-          rm -rf /tmp/patches-temp
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
-          cd /tmp/patches-temp
-          git sparse-checkout set patches
-          rm -rf ${{ github.workspace }}/patches
-          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
-          echo "After checkout:"
-          ls -la ${{ github.workspace }}/patches
+      - name: Fetch patches from cache
+        uses: actions/cache@v5.0.4
+        with:
+          path: patches
+          key: patches-${{ github.sha }}
+          restore-keys: patches-
+          enableCrossOsArchive: true
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -727,7 +738,7 @@ jobs:
 
   build-linux:
     name: Build Linux
-    needs: [check-version, fetch-depot-tools, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     strategy:
@@ -777,11 +788,10 @@ jobs:
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Clean source for Linux build
+      - name: Clean source files
         run: |
-          cd ${{ github.workspace }}
-          echo "Cleaning source for Linux build (remove Android/iOS/macOS/Windows specific code)..."
-          cd webrtc-src/src
+          cd ${{ github.workspace }}/webrtc-src/src
+          echo "Removing Android/iOS/macOS/Windows specific code..."
           rm -rf tools_webrtc/android
           rm -rf build/android
           rm -rf tools_webrtc/ios
@@ -791,16 +801,18 @@ jobs:
           rm -rf build/config/win
           rm -rf build/toolchain/win*
 
-      - name: Checkout patches
-        run: |
-          rm -rf /tmp/patches-temp
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} /tmp/patches-temp
-          cd /tmp/patches-temp
-          git sparse-checkout set patches
-          rm -rf ${{ github.workspace }}/patches
-          mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
-          echo "After checkout:"
-          ls -la ${{ github.workspace }}/patches
+      - name: Fetch patches from cache
+        uses: actions/cache@v5.0.4
+        with:
+          path: patches
+          key: patches-${{ github.sha }}
+          restore-keys: patches-
+          enableCrossOsArchive: true
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1.7.0
+        with:
+          xcode-version: "latest-stable"
 
       - name: Fetch depot_tools from cache
         id: cache-depot-tools
@@ -890,7 +902,6 @@ jobs:
             '--exclude=*' \
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
-          rm -rf $OUTPUT_DIR/include/.git 2>/dev/null || true
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
@@ -906,7 +917,7 @@ jobs:
 
   build-windows:
     name: Build Windows
-    needs: [check-version, fetch-depot-tools, fetch-webrtc]
+    needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
     strategy:
@@ -954,10 +965,10 @@ jobs:
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Clean source for Windows build
+      - name: Clean source files
         run: |
-          Write-Output "Cleaning source for Windows build (remove Android/iOS/macOS/Linux specific code)..."
           Set-Location "${{ github.workspace }}/webrtc-src/src"
+          Write-Output "Removing Android/iOS/macOS/Linux specific code..."
           Remove-Item -Recurse -Force "tools_webrtc/android" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "build/android" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "tools_webrtc/ios" -ErrorAction SilentlyContinue
@@ -966,18 +977,14 @@ jobs:
           Remove-Item -Recurse -Force "build/config/mac" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "sdk/objc" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "sdk/mac" -ErrorAction SilentlyContinue
-          Set-Location "${{ github.workspace }}"
 
-      - name: Checkout patches
-        run: |
-          Remove-Item -Recurse -Force "$env:TEMP\patches-temp" -ErrorAction SilentlyContinue
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} "$env:TEMP\patches-temp"
-          Set-Location "$env:TEMP\patches-temp"
-          git sparse-checkout set patches
-          Remove-Item -Recurse -Force "${{ github.workspace }}\patches" -ErrorAction SilentlyContinue
-          Move-Item -Force "$env:TEMP\patches-temp\patches" "${{ github.workspace }}\patches"
-          Write-Output "After checkout:"
-          Get-ChildItem "${{ github.workspace }}\patches"
+      - name: Fetch patches from cache
+        uses: actions/cache@v5.0.4
+        with:
+          path: patches
+          key: patches-${{ github.sha }}
+          restore-keys: patches-
+          enableCrossOsArchive: true
 
       - name: Fetch depot_tools from cache
         id: cache-depot-tools
