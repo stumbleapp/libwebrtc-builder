@@ -250,10 +250,26 @@ jobs:
           compression-level: 0
 
   build-android:
-    name: Build Android
+    name: Build Android (${{ matrix.arch }})
     needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: arm64-v8a
+            cpu: arm64
+          - arch: armeabi-v7a
+            cpu: arm
+            extra_args: "arm_version=7"
+          - arch: x86_64
+            cpu: x64
+          - arch: x86
+            cpu: x86
+    env:
+      ARCH: ${{ matrix.arch }}
+      CPU: ${{ matrix.cpu }}
+      EXTRA_ARGS: ${{ matrix.extra_args }}
     steps:
       - name: Free disk space
         run: |
@@ -355,108 +371,43 @@ jobs:
           
           mkdir -p out
           
-          build_aar_arch() {
-            local arch=$1
-            local output=$2
-            echo "Building AAR for $arch..."
-            python3 tools_webrtc/android/build_aar.py \
-              --build-dir out \
-              --output "$output" \
-              --arch "$arch" \
-              --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
-          }
+          echo "Building AAR for $ARCH..."
+          python3 tools_webrtc/android/build_aar.py \
+            --build-dir out \
+            --output out/libwebrtc.aar \
+            --arch "$ARCH" \
+            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
           
-          build_aar_arch "arm64-v8a" "out/libwebrtc-arm64.aar" &
-          build_aar_arch "armeabi-v7a" "out/libwebrtc-armv7.aar" &
-          build_aar_arch "x86_64" "out/libwebrtc-x64.aar" &
-          build_aar_arch "x86" "out/libwebrtc-x86.aar" &
+          echo "Building static lib for $ARCH..."
+          mkdir -p out/static/$ARCH
+          gn gen out/static/$ARCH --args="target_os=\"android\" target_cpu=\"$CPU\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $EXTRA_ARGS" 2>/dev/null || true
+          ninja -C out/static/$ARCH -j16 2>/dev/null || true
+          ninja -C out/static/$ARCH native_api -j16 2>/dev/null || true
           
-          echo "=== Building individual architectures with native_api (parallel) ==="
-          
-          build_arch() {
-            local arch=$1
-            local cpu=$2
-            local extra_args=$3
-            
-            echo "Building $arch ($cpu)..."
-            mkdir -p out/static/$arch
-            gn gen out/static/$arch --args="target_os=\"android\" target_cpu=\"$cpu\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $extra_args" 2>/dev/null || true
-            ninja -C out/static/$arch -j16 2>/dev/null || true
-            ninja -C out/static/$arch native_api -j16 2>/dev/null || true
-            
-            echo "Creating static library for $arch..."
-            cd out/static/$arch/obj
-            rm -f sdk/android/libjingle_peerconnection_so/jni_onload.o 2>/dev/null || true
-            ${{ github.workspace }}/webrtc-src/src/third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../libwebrtc.a `find . -name '*.o'` 2>/dev/null || true
-          }
-          
-          build_arch "arm64-v8a" "arm64" "" &
-          build_arch "armeabi-v7a" "arm" "arm_version=7" &
-          build_arch "x86_64" "x64" "" &
-          build_arch "x86" "x86" "" &
-          
-          wait
-          
-          echo "=== Combining AARs ==="
-          mkdir -p out/aar_combined
-          cd out/aar_combined
-          
-          for aar in ../libwebrtc-*.aar; do
-            unzip -q "$aar" -d extracted 2>/dev/null || true
-          done
-          
-          mkdir -p lib
-          mkdir -p classes
-          
-          for dir in extracted/*/lib; do
-            if [ -d "$dir" ]; then
-              arch=$(basename $(dirname $dir))
-              mkdir -p lib/$arch
-              cp -n $dir/*.so lib/$arch/ 2>/dev/null || true
-            fi
-          done
-          
-          if [ -d "extracted/classes.jar" ]; then
-            cp extracted/classes.jar classes/libwebrtc.jar
-          elif [ -d "extracted/classes" ]; then
-            (cd extracted && jar cf ../classes/libwebrtc.jar classes)
-          fi
-          
-          cp ../libwebrtc-arm64.aar/AndroidManifest.xml . 2>/dev/null || true
-          
-          jar cfM ../libwebrtc.aar AndroidManifest.xml classes lib
-          cd ..
+          echo "Creating static library for $ARCH..."
+          cd out/static/$ARCH/obj
+          rm -f sdk/android/libjingle_peerconnection_so/jni_onload.o 2>/dev/null || true
+          ${{ github.workspace }}/webrtc-src/src/third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../libwebrtc.a `find . -name '*.o'` 2>/dev/null || true
 
       - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
-          OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
+          OUTPUT_DIR="${{ github.workspace }}/output-android-$ARCH-${VERSION}"
           
           mkdir -p $OUTPUT_DIR/aar
           mkdir -p $OUTPUT_DIR/jar
+          mkdir -p $OUTPUT_DIR/lib/$ARCH
           mkdir -p $OUTPUT_DIR/include
-          
-          for arch in arm64-v8a armeabi-v7a x86_64 x86; do
-            mkdir -p $OUTPUT_DIR/lib/$arch
-          done
           
           cp out/libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc.aar 2>/dev/null || true
           
-          if [ -f out/libwebrtc.jar ]; then
-            cp out/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
-          else
-            unzip -q out/libwebrtc.aar -d aar_tmp 2>/dev/null || true
-            cp aar_tmp/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar 2>/dev/null || true
-            rm -rf aar_tmp
-          fi
+          unzip -q out/libwebrtc.aar -d aar_tmp 2>/dev/null || true
+          cp aar_tmp/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar 2>/dev/null || true
+          cp aar_tmp/lib/*.so $OUTPUT_DIR/lib/$ARCH/ 2>/dev/null || true
+          rm -rf aar_tmp
           
-          for arch in arm64-v8a armeabi-v7a x86_64 x86; do
-            cp out/static/$arch/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
-            unzip -q out/libwebrtc-$arch.aar -d aar_tmp 2>/dev/null || true
-            cp aar_tmp/lib/*.so $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
-            rm -rf aar_tmp
-          done
+          cp out/static/$ARCH/libwebrtc.a $OUTPUT_DIR/lib/ 2>/dev/null || true
           
           rsync -amv \
             '--include=*/' \
@@ -466,6 +417,94 @@ jobs:
             '--exclude=*' \
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
+          
+          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          echo "$VERSION" > $OUTPUT_DIR/VERSION
+          
+          cd $OUTPUT_DIR
+          zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-$ARCH-${VERSION}.zip aar jar lib include NOTICE VERSION
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: libwebrtc-android-${{ matrix.arch }}
+          path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${{ matrix.arch }}-*.zip
+          compression-level: 0
+
+  combine-android:
+    name: Combine Android
+    needs: [check-version, build-android]
+    if: needs.check-version.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts/
+          pattern: libwebrtc-android-*
+          merge-multiple: false
+
+      - name: Combine artifacts
+        run: |
+          VERSION=$(ls artifacts/ | head -1 | sed 's/libwebrtc-android-.*-//' | sed 's/.zip//')
+          echo "Combining Android artifacts for version $VERSION"
+          
+          OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
+          mkdir -p $OUTPUT_DIR/aar
+          mkdir -p $OUTPUT_DIR/jar
+          mkdir -p $OUTPUT_DIR/include
+          
+          ARCHS="arm64-v8a armeabi-v7a x86_64 x86"
+          
+          for arch in $ARCHS; do
+            mkdir -p $OUTPUT_DIR/lib/$arch
+          done
+          
+          echo "Creating combined AAR..."
+          mkdir -p aar_combined
+          cd aar_combined
+          
+          for zip in ../artifacts/libwebrtc-android-*.zip; do
+            unzip -q "$zip" -d extracted 2>/dev/null || true
+          done
+          
+          mkdir -p lib
+          mkdir -p classes
+          
+          for dir in extracted/*/lib/*; do
+            if [ -d "$dir" ]; then
+              arch=$(basename $dir)
+              mkdir -p lib/$arch
+              cp -n $dir/*.so lib/$arch/ 2>/dev/null || true
+            fi
+          done
+          
+          if [ -d "extracted/arm64-v8a/jar" ]; then
+            cp extracted/arm64-v8a/jar/libwebrtc.jar classes/libwebrtc.jar 2>/dev/null || true
+          fi
+          
+          cp ../artifacts/libwebrtc-android-arm64-v8a.zip/extracted/aar/AndroidManifest.xml . 2>/dev/null || true
+          
+          jar cfM ../combined/libwebrtc.aar AndroidManifest.xml classes lib 2>/dev/null || true
+          cd ..
+          
+          echo "Copying to output..."
+          cp aar_combined/libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc.aar
+          cp aar_combined/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
+          
+          for arch in $ARCHS; do
+            if [ -d "aar_combined/lib/$arch" ]; then
+              cp -r aar_combined/lib/$arch/* $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            fi
+            if [ -d "artifacts/libwebrtc-android-$arch.zip/extracted/lib" ]; then
+              cp artifacts/libwebrtc-android-$arch.zip/extracted/lib/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            fi
+          done
+          
+          echo "Copying headers..."
+          unzip -q artifacts/libwebrtc-android-arm64-v8a.zip -d headers_tmp 2>/dev/null || true
+          cp -r headers_tmp/extracted/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+          rm -rf headers_tmp
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
@@ -481,7 +520,7 @@ jobs:
           compression-level: 0
 
   build-ios:
-    name: Build iOS
+    name: Build iOS (arm64, x64)
     needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
@@ -622,7 +661,7 @@ jobs:
           compression-level: 0
 
   build-macos:
-    name: Build macOS
+    name: Build macOS (${{ matrix.arch }})
     needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
@@ -769,7 +808,7 @@ jobs:
           compression-level: 0
 
   build-linux:
-    name: Build Linux
+    name: Build Linux (${{ matrix.arch }})
     needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
@@ -934,7 +973,7 @@ jobs:
           compression-level: 0
 
   build-windows:
-    name: Build Windows
+    name: Build Windows (${{ matrix.arch }})
     needs: [check-version, fetch-depot-tools, fetch-patches, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
@@ -1112,7 +1151,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [check-version, fetch-webrtc, package-headers, build-android, build-ios, build-macos, build-linux, build-windows]
+    needs: [check-version, fetch-webrtc, package-headers, build-ios, build-macos, build-linux, build-windows, combine-android]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
