@@ -81,12 +81,13 @@ jobs:
       - name: Fetch patches
         if: steps.cache-patches.outputs.cache-hit != 'true'
         run: |
-          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} patches-temp
-          cd patches-temp
+          git clone --depth=1 --sparse --branch main https://github.com/${{ github.repository }} patches
+          cd patches
           git sparse-checkout set patches
-          mv patches ../patches
           cd ..
-          rm -rf patches-temp
+          rm -rf patches/.git
+          mv patches/patches .
+          rm -rf patches
 
   fetch-webrtc:
     name: Grab WebRTC source if needed
@@ -168,10 +169,6 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare WebRTC source for caching
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        run: |
-          cd ${{ github.workspace }}
           echo "Removing .git directories to save space..."
           find webrtc-src -type d -name '.git' -exec rm -rf {} + 2>/dev/null || true
 
@@ -240,13 +237,14 @@ jobs:
           rm -rf ../headers-output/rtc_tools 2>/dev/null || true
           
           cd ../headers-output
-          zip -r -9 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip .
+          zip -r -0 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-headers
           path: ${{ github.workspace }}/webrtc-src/libwebrtc-headers-*.zip
+          compression-level: 0
 
   build-android:
     name: Build Android
@@ -433,13 +431,14 @@ jobs:
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           cd $OUTPUT_DIR
-          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip aar jar lib include NOTICE VERSION
+          zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip aar jar lib include NOTICE VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-android
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-*.zip
+          compression-level: 0
 
   build-ios:
     name: Build iOS
@@ -573,13 +572,14 @@ jobs:
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           
           cd $OUTPUT_DIR
-          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
+          zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-ios
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-*.zip
+          compression-level: 0
 
   build-macos:
     name: Build macOS
@@ -728,13 +728,14 @@ jobs:
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           
           cd $OUTPUT_DIR
-          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
+          zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-${{ matrix.arch }}-*.zip
+          compression-level: 0
 
   build-linux:
     name: Build Linux
@@ -907,13 +908,14 @@ jobs:
           echo "$VERSION" > $OUTPUT_DIR/VERSION
             
           cd $OUTPUT_DIR
-          zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
+          zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-linux-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-${{ matrix.arch }}-*.zip
+          compression-level: 0
 
   build-windows:
     name: Build Windows
@@ -1079,9 +1081,9 @@ jobs:
           Set-Location "$OUTPUT_DIR"
           Get-ChildItem -ErrorAction SilentlyContinue
           if (Get-Command 7z -ErrorAction SilentlyContinue) {
-            7z a -mx=9 "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" * -r
+            7z a -mx=0 "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" * -r
           } else {
-            Compress-Archive -Path * -DestinationPath "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" -CompressionLevel Optimal -Force
+            Compress-Archive -Path * -DestinationPath "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" -CompressionLevel NoCompression -Force
           }
           Set-Location "${{ github.workspace }}/webrtc-src/src"
 
@@ -1090,6 +1092,7 @@ jobs:
         with:
           name: libwebrtc-windows-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-${{ matrix.arch }}-*.zip
+          compression-level: 0
 
   release:
     name: Create Release
