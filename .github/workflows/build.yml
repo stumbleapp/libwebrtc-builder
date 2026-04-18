@@ -168,6 +168,10 @@ jobs:
             exit 1
           fi
 
+      - name: Remove .git directories
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}
           echo "Removing .git directories to save space..."
           find webrtc-src -type d -name '.git' -exec rm -rf {} + 2>/dev/null || true
 
