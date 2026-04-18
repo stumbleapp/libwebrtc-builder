@@ -73,10 +73,7 @@ jobs:
         id: cache-webrtc
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
@@ -146,20 +143,12 @@ jobs:
             exit 1
           fi
 
-      - name: Compress WebRTC source
+      - name: Prepare WebRTC source for caching
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
           cd ${{ github.workspace }}
-          echo "Removing .git directories to save space in archive..."
+          echo "Removing .git directories to save space..."
           find webrtc-src -type d -name '.git' -exec rm -rf {} + 2>/dev/null || true
-          
-          if command -v zstd &> /dev/null; then
-            tar -cf webrtc-src.tar webrtc-src && zstd -T0 -6 webrtc-src.tar -o webrtc-src.tar.zst && rm webrtc-src.tar
-          elif command -v xz &> /dev/null; then
-            tar -I 'xz -7 -T0' -cf webrtc-src.tar.xz webrtc-src
-          else
-            tar -czf webrtc-src.tar.gz webrtc-src
-          fi
 
   package-headers:
     name: Package Headers
@@ -194,29 +183,20 @@ jobs:
       - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Decompress WebRTC source
+      - name: Prepare WebRTC source
         run: |
           cd ${{ github.workspace }}
-          echo "Checking for archive files:"
-          ls -la webrtc-src.tar.* 2>/dev/null || echo "No archives found"
-          if [ -f webrtc-src.tar.zst ]; then
-            echo "Decompressing webrtc-src.tar.zst..."
-            zstd -d webrtc-src.tar.zst -o webrtc-src.tar
-            echo "Extracting webrtc-src.tar..."
-            tar -xf webrtc-src.tar
-            rm -f webrtc-src.tar webrtc-src.tar.zst
-          elif [ -f webrtc-src.tar.xz ]; then
-            tar -Jxf webrtc-src.tar.xz && rm webrtc-src.tar.xz
-          elif [ -f webrtc-src.tar.gz ]; then
-            tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
+          if [ -d webrtc-src/src ]; then
+            echo "WebRTC source found in cache"
+            ls -la webrtc-src
+          else
+            echo "WebRTC source not in cache, will need to fetch"
+            exit 1
           fi
 
       - name: Create artifact
@@ -277,39 +257,16 @@ jobs:
       - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Decompress WebRTC source
+      - name: Clean source for Android build
         run: |
           cd ${{ github.workspace }}
-          echo "Checking for archive files:"
-          ls -la webrtc-src.tar.* 2>/dev/null || echo "No archives found"
-          rm -rf /tmp/webrtc-src
-          mkdir -p /tmp/webrtc-src
-          cd /tmp/webrtc-src
-          if [ -f "${{ github.workspace }}/webrtc-src.tar.zst" ]; then
-            echo "Decompressing webrtc-src.tar.zst..."
-            zstd -d "${{ github.workspace }}/webrtc-src.tar.zst" -o webrtc-src.tar
-            echo "Extracting webrtc-src.tar..."
-            tar -xf webrtc-src.tar
-            rm -f webrtc-src.tar
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.xz" ]; then
-            tar -Jxf "${{ github.workspace }}/webrtc-src.tar.xz"
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.gz" ]; then
-            tar -xzf "${{ github.workspace }}/webrtc-src.tar.gz"
-          fi
-          echo "Extracted contents:"
-          ls -la /tmp/webrtc-src/
-          rm -f ${{ github.workspace }}/webrtc-src.tar.*
-          
           echo "Cleaning source for Android build (remove iOS/macOS/Windows specific code)..."
-          cd /tmp/webrtc-src/webrtc-src/src
+          cd webrtc-src/src
           rm -rf tools_webrtc/ios
           rm -rf sdk/objc
           rm -rf sdk/mac
@@ -327,13 +284,6 @@ jobs:
           mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
-
-      - name: Move WebRTC source to workspace
-        run: |
-          rm -rf ${{ github.workspace }}/webrtc-src
-          mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
-          echo "webrtc-src moved to workspace:"
-          ls -la ${{ github.workspace }}/webrtc-src/
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
@@ -505,37 +455,16 @@ jobs:
       - name: Restore WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Decompress WebRTC source
+      - name: Clean source for iOS build
         run: |
           cd ${{ github.workspace }}
-          rm -rf /tmp/webrtc-src
-          mkdir -p /tmp/webrtc-src
-          cd /tmp/webrtc-src
-          if [ -f "${{ github.workspace }}/webrtc-src.tar.zst" ]; then
-            echo "Decompressing webrtc-src.tar.zst..."
-            zstd -d "${{ github.workspace }}/webrtc-src.tar.zst" -o webrtc-src.tar
-            echo "Extracting webrtc-src.tar..."
-            tar -xf webrtc-src.tar
-            rm -f webrtc-src.tar
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.xz" ]; then
-            tar -Jxf "${{ github.workspace }}/webrtc-src.tar.xz"
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.gz" ]; then
-            tar -xzf "${{ github.workspace }}/webrtc-src.tar.gz"
-          fi
-          echo "Extracted contents:"
-          ls -la /tmp/webrtc-src/
-          rm -f ${{ github.workspace }}/webrtc-src.tar.*
-          
           echo "Cleaning source for iOS build (remove Android/Linux/Windows specific code)..."
-          cd /tmp/webrtc-src/webrtc-src/src
+          cd webrtc-src/src
           rm -rf tools_webrtc/android
           rm -rf build/android
           rm -rf build/linux
@@ -554,13 +483,6 @@ jobs:
           mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
-
-      - name: Move WebRTC source to workspace
-        run: |
-          rm -rf ${{ github.workspace }}/webrtc-src
-          mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
-          echo "webrtc-src moved to workspace:"
-          ls -la ${{ github.workspace }}/webrtc-src/
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -684,37 +606,16 @@ jobs:
       - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Decompress WebRTC source
+      - name: Clean source for macOS build
         run: |
           cd ${{ github.workspace }}
-          rm -rf /tmp/webrtc-src
-          mkdir -p /tmp/webrtc-src
-          cd /tmp/webrtc-src
-          if [ -f "${{ github.workspace }}/webrtc-src.tar.zst" ]; then
-            echo "Decompressing webrtc-src.tar.zst..."
-            zstd -d "${{ github.workspace }}/webrtc-src.tar.zst" -o webrtc-src.tar
-            echo "Extracting webrtc-src.tar..."
-            tar -xf webrtc-src.tar
-            rm -f webrtc-src.tar
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.xz" ]; then
-            tar -Jxf "${{ github.workspace }}/webrtc-src.tar.xz"
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.gz" ]; then
-            tar -xzf "${{ github.workspace }}/webrtc-src.tar.gz"
-          fi
-          echo "Extracted contents:"
-          ls -la /tmp/webrtc-src/
-          rm -f ${{ github.workspace }}/webrtc-src.tar.*
-          
           echo "Cleaning source for macOS build (remove Android/iOS/Linux/Windows specific code)..."
-          cd /tmp/webrtc-src/webrtc-src/src
+          cd webrtc-src/src
           rm -rf tools_webrtc/android
           rm -rf build/android
           rm -rf tools_webrtc/ios
@@ -733,13 +634,6 @@ jobs:
           mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
-
-      - name: Move WebRTC source to workspace
-        run: |
-          rm -rf ${{ github.workspace }}/webrtc-src
-          mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
-          echo "webrtc-src moved to workspace:"
-          ls -la ${{ github.workspace }}/webrtc-src/
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -878,39 +772,16 @@ jobs:
       - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Decompress WebRTC source
+      - name: Clean source for Linux build
         run: |
           cd ${{ github.workspace }}
-          echo "Checking for archive files:"
-          ls -la webrtc-src.tar.* 2>/dev/null || echo "No archives found"
-          rm -rf /tmp/webrtc-src
-          mkdir -p /tmp/webrtc-src
-          cd /tmp/webrtc-src
-          if [ -f "${{ github.workspace }}/webrtc-src.tar.zst" ]; then
-            echo "Decompressing webrtc-src.tar.zst..."
-            zstd -d "${{ github.workspace }}/webrtc-src.tar.zst" -o webrtc-src.tar
-            echo "Extracting webrtc-src.tar..."
-            tar -xf webrtc-src.tar
-            rm -f webrtc-src.tar
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.xz" ]; then
-            tar -Jxf "${{ github.workspace }}/webrtc-src.tar.xz"
-          elif [ -f "${{ github.workspace }}/webrtc-src.tar.gz" ]; then
-            tar -xzf "${{ github.workspace }}/webrtc-src.tar.gz"
-          fi
-          echo "Extracted contents:"
-          ls -la /tmp/webrtc-src/
-          rm -f ${{ github.workspace }}/webrtc-src.tar.*
-          
           echo "Cleaning source for Linux build (remove Android/iOS/macOS/Windows specific code)..."
-          cd /tmp/webrtc-src/webrtc-src/src
+          cd webrtc-src/src
           rm -rf tools_webrtc/android
           rm -rf build/android
           rm -rf tools_webrtc/ios
@@ -930,13 +801,6 @@ jobs:
           mv /tmp/patches-temp/patches ${{ github.workspace }}/patches
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
-
-      - name: Move WebRTC source to workspace
-        run: |
-          rm -rf ${{ github.workspace }}/webrtc-src
-          mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
-          echo "webrtc-src moved to workspace:"
-          ls -la ${{ github.workspace }}/webrtc-src/
 
       - name: Fetch depot_tools from cache
         id: cache-depot-tools
@@ -1085,47 +949,15 @@ jobs:
       - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
-          path: |
-            webrtc-src.tar.zst
-            webrtc-src.tar.xz
-            webrtc-src.tar.gz
+          path: webrtc-src
           key: webrtc-source-${{ needs.check-version.outputs.new_version }}
           restore-keys: webrtc-source-
           enableCrossOsArchive: true
 
-      - name: Decompress WebRTC source
+      - name: Clean source for Windows build
         run: |
-          Write-Output "Current directory: $(Get-Location)"
-          Write-Output "Files in root: $(Get-ChildItem -Name)"
-          if (Test-Path webrtc-src.tar.zst) {
-            Write-Output "Found webrtc-src.tar.zst, decompressing..."
-            Remove-Item -Recurse -Force "$env:TEMP\webrtc-src" -ErrorAction SilentlyContinue
-            New-Item -ItemType Directory -Path "$env:TEMP\webrtc-src" -Force
-            Set-Location "$env:TEMP\webrtc-src"
-            zstd -d "${{ github.workspace }}\webrtc-src.tar.zst" -o webrtc-src.tar
-            Write-Output "Extracting webrtc-src.tar..."
-            tar -xf webrtc-src.tar
-            Remove-Item webrtc-src.tar -Force -ErrorAction SilentlyContinue
-            Set-Location "${{ github.workspace }}"
-          } elseif (Test-Path webrtc-src.tar.xz) {
-            Remove-Item -Recurse -Force "$env:TEMP\webrtc-src" -ErrorAction SilentlyContinue
-            New-Item -ItemType Directory -Path "$env:TEMP\webrtc-src" -Force
-            Set-Location "$env:TEMP\webrtc-src"
-            tar -Jxf "${{ github.workspace }}/webrtc-src.tar.xz"
-            Set-Location "${{ github.workspace }}"
-          } elseif (Test-Path webrtc-src.tar.gz) {
-            Remove-Item -Recurse -Force "$env:TEMP\webrtc-src" -ErrorAction SilentlyContinue
-            New-Item -ItemType Directory -Path "$env:TEMP\webrtc-src" -Force
-            Set-Location "$env:TEMP\webrtc-src"
-            tar -xzf "${{ github.workspace }}/webrtc-src.tar.gz"
-            Set-Location "${{ github.workspace }}"
-          }
-          Write-Output "Extracted contents:"
-          Get-ChildItem "$env:TEMP\webrtc-src"
-          Remove-Item -Force "${{ github.workspace }}\webrtc-src.tar*" -ErrorAction SilentlyContinue
-          
           Write-Output "Cleaning source for Windows build (remove Android/iOS/macOS/Linux specific code)..."
-          Set-Location "$env:TEMP\webrtc-src\webrtc-src\src"
+          Set-Location "${{ github.workspace }}/webrtc-src/src"
           Remove-Item -Recurse -Force "tools_webrtc/android" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "build/android" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "tools_webrtc/ios" -ErrorAction SilentlyContinue
@@ -1146,13 +978,6 @@ jobs:
           Move-Item -Force "$env:TEMP\patches-temp\patches" "${{ github.workspace }}\patches"
           Write-Output "After checkout:"
           Get-ChildItem "${{ github.workspace }}\patches"
-
-      - name: Move WebRTC source to workspace
-        run: |
-          Remove-Item -Recurse -Force "${{ github.workspace }}\webrtc-src" -ErrorAction SilentlyContinue
-          Move-Item -Force "$env:TEMP\webrtc-src\webrtc-src" "${{ github.workspace }}\webrtc-src"
-          Write-Output "webrtc-src moved to workspace:"
-          Get-ChildItem "${{ github.workspace }}\webrtc-src"
 
       - name: Fetch depot_tools from cache
         id: cache-depot-tools
