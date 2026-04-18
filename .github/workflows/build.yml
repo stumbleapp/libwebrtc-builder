@@ -19,13 +19,13 @@ permissions:
 
 jobs:
   check-version:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    name: Retrieve version information
+    runs-on: ubuntu-slim
     outputs:
       new_version: ${{ steps.check.outputs.new_version }}
       current_version: ${{ steps.check.outputs.current_version }}
     steps:
-      - name: Check for new WebRTC version
+      - name: Fetch the latest Chromium milestone
         id: check
         run: |
           CHROME_MILESTONE=$(curl -sL "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone.json" | jq -r '.milestones | to_entries | max_by(.key) | .key')
@@ -42,12 +42,13 @@ jobs:
             echo "No new version found. Current: $CURRENT, Last built: $LAST_BUILT"
           fi
 
-  prepare-depot-tools:
+  fetch-depot-tools:
+    name: Grab depot_tools if needed
     needs: check-version
     if: needs.check-version.outputs.new_version != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
-      - name: Cache depot_tools
+      - name: Check for cached depot_tools
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
         with:
@@ -56,13 +57,15 @@ jobs:
           enableCrossOsArchive: true
           lookup-only: true
 
-      - name: Install depot_tools
+      - name: Fetch depot_tools
         if: steps.cache-depot-tools.outputs.cache-hit != 'true'
         run: |
           git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git depot_tools
+          rm -rf depot_tools/.git
 
   fetch-webrtc:
-    needs: [check-version, prepare-depot-tools]
+    name: Grab WebRTC source if needed
+    needs: [check-version, fetch-depot-tools]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
@@ -82,7 +85,7 @@ jobs:
       - name: Free disk space
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
-          echo "Removing unused runtimes from runner..."
+          echo "Removing unused runtimes..."
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /usr/share/swift || true
           sudo rm -rf /usr/local/.ghcup || true
@@ -94,16 +97,17 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+
           echo "Cleaning package caches..."
           sudo rm -rf /var/cache/apt/archives/* || true
           rm -rf ~/.cache/pip/* || true
           rm -rf ~/go/pkg/mod/cache/* || true
+
           echo "Cleaning Docker..."
           docker system prune -af || true
           docker builder prune -af || true
-          echo "Disk space freed"
 
-      - name: Restore depot_tools
+      - name: Fetch depot_tools from cache
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         uses: actions/cache@v5.0.4
         with:
@@ -158,13 +162,14 @@ jobs:
           fi
 
   package-headers:
-    needs: [check-version, prepare-depot-tools, fetch-webrtc]
+    name: Package Headers
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
         run: |
-          echo "Removing unused runtimes from runner..."
+          echo "Removing unused runtimes..."
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /usr/share/swift || true
           sudo rm -rf /usr/local/.ghcup || true
@@ -176,16 +181,17 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+
           echo "Cleaning package caches..."
           sudo rm -rf /var/cache/apt/archives/* || true
           rm -rf ~/.cache/pip/* || true
           rm -rf ~/go/pkg/mod/cache/* || true
+
           echo "Cleaning Docker..."
           docker system prune -af || true
           docker builder prune -af || true
-          echo "Disk space freed"
 
-      - name: Restore WebRTC source
+      - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
           path: |
@@ -213,7 +219,7 @@ jobs:
             tar -xzf webrtc-src.tar.gz && rm webrtc-src.tar.gz
           fi
 
-      - name: Create headers artifact
+      - name: Create artifact
         run: |
           VERSION=${{ needs.check-version.outputs.new_version }}
           mkdir -p headers-output
@@ -232,20 +238,21 @@ jobs:
           cd ../headers-output
           zip -r -9 ${{ github.workspace }}/webrtc-src/libwebrtc-headers-${VERSION}.zip .
 
-      - name: Upload headers artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: headers
+          name: libwebrtc-headers
           path: ${{ github.workspace }}/webrtc-src/libwebrtc-headers-*.zip
 
   build-android:
-    needs: [check-version, prepare-depot-tools, fetch-webrtc]
+    name: Build Android
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
         run: |
-          echo "Removing unused runtimes from runner..."
+          echo "Removing unused runtimes..."
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /usr/share/swift || true
           sudo rm -rf /usr/local/.ghcup || true
@@ -257,16 +264,17 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+
           echo "Cleaning package caches..."
           sudo rm -rf /var/cache/apt/archives/* || true
           rm -rf ~/.cache/pip/* || true
           rm -rf ~/go/pkg/mod/cache/* || true
+
           echo "Cleaning Docker..."
           docker system prune -af || true
           docker builder prune -af || true
-          echo "Disk space freed"
 
-      - name: Restore WebRTC source
+      - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
           path: |
@@ -320,7 +328,7 @@ jobs:
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
 
-      - name: Move webrtc source to workspace
+      - name: Move WebRTC source to workspace
         run: |
           rm -rf ${{ github.workspace }}/webrtc-src
           mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
@@ -330,7 +338,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4.0.1
 
-      - name: Restore depot_tools
+      - name: Fetch depot_tools from cache
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
         with:
@@ -367,7 +375,7 @@ jobs:
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
           apply_patch ${{ github.workspace }}/patches/linux_fix_enable_safe_libstdcxx.patch
 
-      - name: Build Android (arm64, armv7, x64, x86)
+      - name: Compile
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
@@ -382,28 +390,31 @@ jobs:
             --arch arm64-v8a armeabi-v7a x86_64 x86 \
             --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
 
-          echo "=== Building individual architectures with native_api ==="
+          echo "=== Building individual architectures with native_api (parallel) ==="
           
-          for arch in arm64-v8a armeabi-v7a x86_64 x86; do
-            case $arch in
-              arm64-v8a) cpu="arm64" extra_args="" ;;
-              armeabi-v7a) cpu="arm" extra_args="arm_version=7" ;;
-              x86_64) cpu="x64" extra_args="" ;;
-              x86) cpu="x86" extra_args="" ;;
-            esac
+          build_arch() {
+            local arch=$1
+            local cpu=$2
+            local extra_args=$3
             
             echo "Building $arch ($cpu)..."
             mkdir -p out/static/$arch
             gn gen out/static/$arch --args="target_os=\"android\" target_cpu=\"$cpu\" is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true use_custom_libcxx=false rtc_build_json=true rtc_use_perfetto=false android_static_analysis=\"off\" rtc_enable_protobuf=false $extra_args" 2>/dev/null || true
-            ninja -C out/static/$arch 2>/dev/null || true
-            ninja -C out/static/$arch native_api 2>/dev/null || true
+            ninja -C out/static/$arch -j16 2>/dev/null || true
+            ninja -C out/static/$arch native_api -j16 2>/dev/null || true
             
             echo "Creating static library for $arch..."
             cd out/static/$arch/obj
             rm -f sdk/android/libjingle_peerconnection_so/jni_onload.o 2>/dev/null || true
             ${{ github.workspace }}/webrtc-src/src/third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../libwebrtc.a `find . -name '*.o'` 2>/dev/null || true
-            cd ${{ github.workspace }}/webrtc-src/src
-          done
+          }
+          
+          build_arch "arm64-v8a" "arm64" "" &
+          build_arch "armeabi-v7a" "arm" "arm_version=7" &
+          build_arch "x86_64" "x64" "" &
+          build_arch "x86" "x86" "" &
+          
+          wait
 
           echo "=== Combining artifacts ==="
           cd out
@@ -412,7 +423,7 @@ jobs:
           rm -f AndroidManifest.xml 2>/dev/null || true
           mv classes.jar libwebrtc.jar 2>/dev/null || true
 
-      - name: Create Android artifact
+      - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
@@ -455,30 +466,34 @@ jobs:
           cd $OUTPUT_DIR
           zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip aar jar lib include NOTICE VERSION
 
-      - name: Upload Android artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-android
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-*.zip
 
   build-ios:
-    needs: [check-version, prepare-depot-tools, fetch-webrtc]
+    name: Build iOS
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     steps:
       - name: Free disk space
         run: |
-          echo "Removing unused runtimes from runner..."
+          echo "Removing unused runtimes..."
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /Library/Java/JavaVirtualMachines || true
           sudo rm -rf /usr/lib/jvm || true
+
           echo "Removing Xcode caches..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
           rm -rf ~/Library/Developer/Xcode/Archives/*
           rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/* 2>/dev/null || true
+
           echo "Removing iOS Simulator data..."
           rm -rf ~/Library/Developer/CoreSimulator/Devices/*
           sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/ || true
+
           echo "Removing package manager caches..."
           rm -rf ~/.npm/*
           rm -rf ~/Library/Caches/CocoaPods/*
@@ -486,9 +501,8 @@ jobs:
           rm -rf ~/Library/Caches/Homebrew/downloads/* || true
           rm -rf ~/Library/Caches/org.swift.swiftpm/* || true
           rm -rf ~/.yarn/cache/* || true
-          echo "Disk space freed"
 
-      - name: Restore WebRTC source
+      - name: Restore WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
           path: |
@@ -541,7 +555,7 @@ jobs:
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
 
-      - name: Move webrtc source to workspace
+      - name: Move WebRTC source to workspace
         run: |
           rm -rf ${{ github.workspace }}/webrtc-src
           mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
@@ -553,7 +567,7 @@ jobs:
         with:
           xcode-version: "latest-stable"
 
-      - name: Restore depot_tools
+      - name: Fetch depot_tools from cache
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
         with:
@@ -588,7 +602,7 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src/src
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
-      - name: Build iOS
+      - name: Compile
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
@@ -602,7 +616,7 @@ jobs:
           echo "Cleaning DerivedData to save space..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
-      - name: Create iOS artifacts
+      - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
@@ -624,14 +638,15 @@ jobs:
           cd $OUTPUT_DIR
           zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
 
-      - name: Upload iOS artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-ios
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-*.zip
 
   build-macos:
-    needs: [check-version, prepare-depot-tools, fetch-webrtc]
+    name: Build macOS
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: macos-latest
     strategy:
@@ -644,17 +659,20 @@ jobs:
     steps:
       - name: Free disk space
         run: |
-          echo "Removing unused runtimes from runner..."
+          echo "Removing unused runtimes..."
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /Library/Java/JavaVirtualMachines || true
           sudo rm -rf /usr/lib/jvm || true
+
           echo "Removing Xcode caches..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
           rm -rf ~/Library/Developer/Xcode/Archives/*
           rm -rf ~/Library/Developer/Xcode/iOS\ DeviceSupport/* 2>/dev/null || true
+
           echo "Removing iOS Simulator data..."
           rm -rf ~/Library/Developer/CoreSimulator/Devices/*
           sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/ || true
+
           echo "Removing package manager caches..."
           rm -rf ~/.npm/*
           rm -rf ~/Library/Caches/CocoaPods/*
@@ -662,9 +680,8 @@ jobs:
           rm -rf ~/Library/Caches/Homebrew/downloads/* || true
           rm -rf ~/Library/Caches/org.swift.swiftpm/* || true
           rm -rf ~/.yarn/cache/* || true
-          echo "Disk space freed"
 
-      - name: Restore WebRTC source
+      - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
           path: |
@@ -717,7 +734,7 @@ jobs:
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
 
-      - name: Move webrtc source to workspace
+      - name: Move WebRTC source to workspace
         run: |
           rm -rf ${{ github.workspace }}/webrtc-src
           mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
@@ -729,7 +746,7 @@ jobs:
         with:
           xcode-version: "latest-stable"
 
-      - name: Restore depot_tools
+      - name: Fetch depot_tools from cache
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
         with:
@@ -764,7 +781,7 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src/src
           apply_patch ${{ github.workspace }}/patches/disable_use_hermetic_xcode_on_linux.patch
 
-      - name: Build macOS
+      - name: Compile
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
@@ -786,7 +803,7 @@ jobs:
           echo "Cleaning DerivedData to save space..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
-      - name: Create macOS artifacts
+      - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
@@ -808,14 +825,15 @@ jobs:
           cd $OUTPUT_DIR
           zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
 
-      - name: Upload macOS artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-${{ matrix.arch }}-*.zip
 
   build-linux:
-    needs: [check-version, prepare-depot-tools, fetch-webrtc]
+    name: Build Linux
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
     strategy:
@@ -835,7 +853,7 @@ jobs:
     steps:
       - name: Free disk space
         run: |
-          echo "Removing unused runtimes from runner..."
+          echo "Removing unused runtimes..."
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /usr/share/swift || true
           sudo rm -rf /usr/local/.ghcup || true
@@ -847,16 +865,17 @@ jobs:
           sudo rm -rf /opt/google/chrome || true
           sudo rm -rf /opt/microsoft || true
           sudo rm -rf /opt/az || true
+
           echo "Cleaning package caches..."
           sudo rm -rf /var/cache/apt/archives/* || true
           rm -rf ~/.cache/pip/* || true
           rm -rf ~/go/pkg/mod/cache/* || true
+
           echo "Cleaning Docker..."
           docker system prune -af || true
           docker builder prune -af || true
-          echo "Disk space freed"
 
-      - name: Restore WebRTC source
+      - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
           path: |
@@ -912,14 +931,14 @@ jobs:
           echo "After checkout:"
           ls -la ${{ github.workspace }}/patches
 
-      - name: Move webrtc source to workspace
+      - name: Move WebRTC source to workspace
         run: |
           rm -rf ${{ github.workspace }}/webrtc-src
           mv /tmp/webrtc-src/webrtc-src ${{ github.workspace }}/webrtc-src
           echo "webrtc-src moved to workspace:"
           ls -la ${{ github.workspace }}/webrtc-src/
 
-      - name: Restore depot_tools
+      - name: Fetch depot_tools from cache
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
         with:
@@ -965,7 +984,7 @@ jobs:
           apply_patch ${{ github.workspace }}/patches/add_licenses.patch
           apply_patch ${{ github.workspace }}/patches/add_deps.patch
 
-      - name: Build Linux
+      - name: Compile
         run: |
           cd webrtc-src/src
           
@@ -977,7 +996,7 @@ jobs:
           gn gen out/RELEASE-$ARCH --args="target_os=\"linux\" target_cpu=\"$CPU\" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false" --quiet
           ninja -C out/RELEASE-$ARCH -j16 webrtc
 
-      - name: Create Linux artifacts
+      - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           VERSION=${{ needs.check-version.outputs.new_version }}
@@ -1015,14 +1034,15 @@ jobs:
           cd $OUTPUT_DIR
           zip -r -9 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
 
-      - name: Upload Linux artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-linux-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-${{ matrix.arch }}-*.zip
 
   build-windows:
-    needs: [check-version, prepare-depot-tools, fetch-webrtc]
+    name: Build Windows
+    needs: [check-version, fetch-depot-tools, fetch-webrtc]
     if: needs.check-version.outputs.new_version != ''
     runs-on: windows-latest
     strategy:
@@ -1046,21 +1066,23 @@ jobs:
           Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Android\Sdk" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:ANDROID_HOME" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:ANDROID_SDK_ROOT" -ErrorAction SilentlyContinue
+
           Write-Output "Removing unused tools from runner..."
           Remove-Item -Recurse -Force "C:\Go" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:TEMP\chocolatey" -ErrorAction SilentlyContinue
+
           Write-Output "Cleaning package manager caches..."
           Remove-Item -Recurse -Force "$env:LOCALAPPDATA\nuget\packages" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:APPDATA\npm" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:LOCALAPPDATA\pip\cache" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:USERPROFILE\.nuget\packages" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Azure" -ErrorAction SilentlyContinue
+
           Write-Output "Cleaning temp files..."
           Remove-Item -Recurse -Force "$env:TEMP\*" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Temp\*" -ErrorAction SilentlyContinue
-          Write-Output "Disk space freed"
 
-      - name: Restore WebRTC source
+      - name: Fetch WebRTC source from cache
         uses: actions/cache@v5.0.4
         with:
           path: |
@@ -1125,14 +1147,14 @@ jobs:
           Write-Output "After checkout:"
           Get-ChildItem "${{ github.workspace }}\patches"
 
-      - name: Move webrtc source to workspace
+      - name: Move WebRTC source to workspace
         run: |
           Remove-Item -Recurse -Force "${{ github.workspace }}\webrtc-src" -ErrorAction SilentlyContinue
           Move-Item -Force "$env:TEMP\webrtc-src\webrtc-src" "${{ github.workspace }}\webrtc-src"
           Write-Output "webrtc-src moved to workspace:"
           Get-ChildItem "${{ github.workspace }}\webrtc-src"
 
-      - name: Restore depot_tools
+      - name: Fetch depot_tools from cache
         id: cache-depot-tools
         uses: actions/cache@v5.0.4
         with:
@@ -1170,7 +1192,7 @@ jobs:
           Apply-Patch "${{ github.workspace }}/patches/add_licenses.patch"
           exit 0
 
-      - name: Build Windows
+      - name: Compile
         run: |
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           
@@ -1183,7 +1205,7 @@ jobs:
           ninja -C "out/$env:OUT" -j16
           if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
-      - name: Create Windows artifacts
+      - name: Create artifact
         run: |
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           $VERSION = "${{ needs.check-version.outputs.new_version }}"
@@ -1231,13 +1253,14 @@ jobs:
           }
           Set-Location "${{ github.workspace }}/webrtc-src/src"
 
-      - name: Upload Windows artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: libwebrtc-windows-${{ matrix.arch }}
           path: ${{ github.workspace }}/webrtc-src/src/libwebrtc-win-${{ matrix.arch }}-*.zip
 
   release:
+    name: Create Release
     needs: [check-version, fetch-webrtc, package-headers, build-android, build-ios, build-macos, build-linux, build-windows]
     if: needs.check-version.outputs.new_version != ''
     runs-on: ubuntu-latest
@@ -1253,7 +1276,7 @@ jobs:
         run: |
           find artifacts/ -type f -name "libwebrtc-*" | sort
 
-      - name: Upload release artifacts
+      - name: Upload artifacts
         uses: softprops/action-gh-release@v3.0.0
         with:
           tag_name: v${{ needs.check-version.outputs.new_version }}
@@ -1263,7 +1286,7 @@ jobs:
           generate_release_notes: true
           body: |
             ## Source Code
-            [View Source](https://webrtc.googlesource.com/src/+refs/tags/v${{ needs.check-version.outputs.new_version }})
+            [View Source](https://webrtc.googlesource.com/src/+/refs/heads/main@{${{ needs.check-version.outputs.new_version }}})
 
             ## Release Notes
             Built from WebRTC version ${{ needs.check-version.outputs.new_version }}
