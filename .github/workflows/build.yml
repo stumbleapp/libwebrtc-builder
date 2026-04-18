@@ -355,12 +355,22 @@ jobs:
           
           mkdir -p out
           
-          python3 tools_webrtc/android/build_aar.py \
-            --build-dir out \
-            --output out/libwebrtc.aar \
-            --arch arm64-v8a armeabi-v7a x86_64 x86 \
-            --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
-
+          build_aar_arch() {
+            local arch=$1
+            local output=$2
+            echo "Building AAR for $arch..."
+            python3 tools_webrtc/android/build_aar.py \
+              --build-dir out \
+              --output "$output" \
+              --arch "$arch" \
+              --extra-gn-args 'is_debug=false is_clang=true is_component_build=false rtc_build_examples=false rtc_build_json=true rtc_build_tools=false rtc_enable_protobuf=false rtc_include_tests=false rtc_use_perfetto=false use_rtti=true libyuv_include_tests=false use_custom_libcxx=false android_static_analysis="off"'
+          }
+          
+          build_aar_arch "arm64-v8a" "out/libwebrtc-arm64.aar" &
+          build_aar_arch "armeabi-v7a" "out/libwebrtc-armv7.aar" &
+          build_aar_arch "x86_64" "out/libwebrtc-x64.aar" &
+          build_aar_arch "x86" "out/libwebrtc-x86.aar" &
+          
           echo "=== Building individual architectures with native_api (parallel) ==="
           
           build_arch() {
@@ -386,13 +396,36 @@ jobs:
           build_arch "x86" "x86" "" &
           
           wait
-
-          echo "=== Combining artifacts ==="
-          cd out
-          unzip -q libwebrtc.aar -d aar_extracted 2>/dev/null || true
-          rm -rf jni 2>/dev/null || true
-          rm -f AndroidManifest.xml 2>/dev/null || true
-          mv classes.jar libwebrtc.jar 2>/dev/null || true
+          
+          echo "=== Combining AARs ==="
+          mkdir -p out/aar_combined
+          cd out/aar_combined
+          
+          for aar in ../libwebrtc-*.aar; do
+            unzip -q "$aar" -d extracted 2>/dev/null || true
+          done
+          
+          mkdir -p lib
+          mkdir -p classes
+          
+          for dir in extracted/*/lib; do
+            if [ -d "$dir" ]; then
+              arch=$(basename $(dirname $dir))
+              mkdir -p lib/$arch
+              cp -n $dir/*.so lib/$arch/ 2>/dev/null || true
+            fi
+          done
+          
+          if [ -d "extracted/classes.jar" ]; then
+            cp extracted/classes.jar classes/libwebrtc.jar
+          elif [ -d "extracted/classes" ]; then
+            (cd extracted && jar cf ../classes/libwebrtc.jar classes)
+          fi
+          
+          cp ../libwebrtc-arm64.aar/AndroidManifest.xml . 2>/dev/null || true
+          
+          jar cfM ../libwebrtc.aar AndroidManifest.xml classes lib
+          cd ..
 
       - name: Create artifact
         run: |
@@ -412,13 +445,17 @@ jobs:
           
           if [ -f out/libwebrtc.jar ]; then
             cp out/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
-          elif [ -f out/aar_extracted/classes.jar ]; then
-            cp out/aar_extracted/classes.jar $OUTPUT_DIR/jar/libwebrtc.jar
+          else
+            unzip -q out/libwebrtc.aar -d aar_tmp 2>/dev/null || true
+            cp aar_tmp/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar 2>/dev/null || true
+            rm -rf aar_tmp
           fi
           
           for arch in arm64-v8a armeabi-v7a x86_64 x86; do
             cp out/static/$arch/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
-            cp out/aar_extracted/libs/$arch/*.so $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            unzip -q out/libwebrtc-$arch.aar -d aar_tmp 2>/dev/null || true
+            cp aar_tmp/lib/*.so $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            rm -rf aar_tmp
           done
           
           rsync -amv \
@@ -693,14 +730,6 @@ jobs:
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
           
-          echo "Building macOS $ARCH (debug)..."
-          mkdir -p out_macos_${ARCH}_debug
-          gn gen out_macos_${ARCH}_debug --args="target_os=\"mac\" target_cpu=\"$ARCH\" enable_stripping=true enable_dsyms=true is_debug=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target=\"10.15\""
-          ninja -C out_macos_${ARCH}_debug
-          ninja -C out_macos_${ARCH}_debug api/audio_codecs:builtin_audio_decoder_factory api/task_queue:default_task_queue_factory sdk:native_api sdk:default_codec_factory_objc pc:peer_connection sdk:videocapture_objc sdk:mac_framework_objc
-          cd out_macos_${ARCH}_debug/obj && /usr/bin/ar -rc libwebrtc.a `find . -name '*.o'`
-          cd ${{ github.workspace }}/webrtc-src/src
-          
           echo "Building macOS $ARCH (release)..."
           mkdir -p out_macos_$ARCH
           gn gen out_macos_$ARCH --args="target_os=\"mac\" target_cpu=\"$ARCH\" enable_stripping=true enable_dsyms=true is_component_build=false treat_warnings_as_errors=false rtc_build_examples=false rtc_build_tools=false rtc_enable_objc_symbol_export=true rtc_enable_symbol_export=true rtc_include_tests=false rtc_libvpx_build_vp9=true rtc_use_perfetto=false use_custom_libcxx=false use_custom_libcxx_for_host=false use_rtti=true libyuv_include_tests=false is_clang=true proprietary_codecs=false use_clang_modules=false mac_deployment_target=\"10.15\""
@@ -717,10 +746,9 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           
           OUTPUT_DIR="${{ github.workspace }}/output-macos-$ARCH-${VERSION}"
-          mkdir -p $OUTPUT_DIR/include $OUTPUT_DIR/lib/debug $OUTPUT_DIR/lib/release $OUTPUT_DIR/Frameworks
+          mkdir -p $OUTPUT_DIR/include $OUTPUT_DIR/lib $OUTPUT_DIR/Frameworks
           
-          cp out_macos_${ARCH}_debug/obj/libwebrtc.a $OUTPUT_DIR/lib/debug/libwebrtc.a || true
-          cp out_macos_${ARCH}/obj/libwebrtc.a $OUTPUT_DIR/lib/release/libwebrtc.a || true
+          cp out_macos_${ARCH}/obj/libwebrtc.a $OUTPUT_DIR/lib/libwebrtc.a || true
           
           cp -R out_macos_$ARCH/WebRTC.framework $OUTPUT_DIR/Frameworks/ || true
           cp -R out_macos_$ARCH/WebRTC.dSYM $OUTPUT_DIR/Frameworks/ || true
@@ -863,13 +891,9 @@ jobs:
         run: |
           cd webrtc-src/src
           
-          echo "Building Linux $ARCH (debug)..."
-          gn gen out/DEBUG-$ARCH --args="target_os=\"linux\" target_cpu=\"$CPU\" is_debug=true rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false" --quiet
-          ninja -C out/DEBUG-$ARCH -j16 webrtc
-          
           echo "Building Linux $ARCH (release)..."
-          gn gen out/RELEASE-$ARCH --args="target_os=\"linux\" target_cpu=\"$CPU\" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false" --quiet
-          ninja -C out/RELEASE-$ARCH -j16 webrtc
+          gn gen out/$ARCH --args="target_os=\"linux\" target_cpu=\"$CPU\" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false" --quiet
+          ninja -C out/$ARCH -j16 webrtc
 
       - name: Create artifact
         run: |
@@ -877,20 +901,14 @@ jobs:
           VERSION=${{ needs.check-version.outputs.new_version }}
           
           OUTPUT_DIR="${{ github.workspace }}/output-$ARCH-${VERSION}"
-          mkdir -p $OUTPUT_DIR/lib/debug
-          mkdir -p $OUTPUT_DIR/lib/release
+          mkdir -p $OUTPUT_DIR/lib
           mkdir -p $OUTPUT_DIR/include
           
           echo "Creating $ARCH artifact..."
           
-          cd out/RELEASE-$ARCH/obj
+          cd out/$ARCH/obj
           /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a $OUTPUT_DIR/lib/release/libwebrtc.a
-          cd ${{ github.workspace }}/webrtc-src/src
-          
-          cd out/DEBUG-$ARCH/obj
-          /usr/bin/ar -rc ../libwebrtc.a `find . -name '*.o'`
-          cp ../libwebrtc.a $OUTPUT_DIR/lib/debug/libwebrtc.a
+          cp ../libwebrtc.a $OUTPUT_DIR/lib/libwebrtc.a
           cd ${{ github.workspace }}/webrtc-src/src
           
           rsync -amv \
