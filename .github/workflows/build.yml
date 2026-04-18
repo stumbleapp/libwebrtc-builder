@@ -446,7 +446,8 @@ jobs:
 
       - name: Combine artifacts
         run: |
-          VERSION=$(ls artifacts/ | head -1 | sed 's/libwebrtc-android-.*-//' | sed 's/.zip//')
+          echo "Getting version..."
+          VERSION=$(unzip -p artifacts/libwebrtc-android-arm64-v8a.zip aar/VERSION 2>/dev/null || echo "unknown")
           echo "Combining Android artifacts for version $VERSION"
           
           OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
@@ -460,51 +461,61 @@ jobs:
             mkdir -p $OUTPUT_DIR/lib/$arch
           done
           
+          echo "Extracting AAR files..."
+          for zip in artifacts/libwebrtc-android-*.zip; do
+            echo "Processing $zip"
+            unzip -q "$zip" -d /tmp/android_extract 2>/dev/null || true
+          done
+          
           echo "Creating combined AAR..."
           mkdir -p aar_combined
           cd aar_combined
           
-          for zip in ../artifacts/libwebrtc-android-*.zip; do
-            unzip -q "$zip" -d extracted 2>/dev/null || true
-          done
-          
-          mkdir -p lib
-          mkdir -p classes
-          
-          for dir in extracted/*/lib/*; do
-            if [ -d "$dir" ]; then
-              arch=$(basename $dir)
+          # Copy .so files per architecture
+          for arch in $ARCHS; do
+            if [ -d "/tmp/android_extract/lib/$arch" ]; then
               mkdir -p lib/$arch
-              cp -n $dir/*.so lib/$arch/ 2>/dev/null || true
+              cp -n /tmp/android_extract/lib/$arch/*.so lib/$arch/ 2>/dev/null || true
             fi
           done
           
-          if [ -d "extracted/arm64-v8a/jar" ]; then
-            cp extracted/arm64-v8a/jar/libwebrtc.jar classes/libwebrtc.jar 2>/dev/null || true
+          # Copy JAR
+          mkdir -p classes
+          if [ -f "/tmp/android_extract/jar/libwebrtc.jar" ]; then
+            cp /tmp/android_extract/jar/libwebrtc.jar classes/libwebrtc.jar 2>/dev/null || true
           fi
           
-          cp ../artifacts/libwebrtc-android-arm64-v8a.zip/extracted/aar/AndroidManifest.xml . 2>/dev/null || true
+          # Copy AndroidManifest.xml from one of the extracted AARs
+          if [ -f "/tmp/android_extract/aar/AndroidManifest.xml" ]; then
+            cp /tmp/android_extract/aar/AndroidManifest.xml . 2>/dev/null || true
+          fi
           
-          jar cfM ../combined/libwebrtc.aar AndroidManifest.xml classes lib 2>/dev/null || true
+          jar cfM ../libwebrtc.aar AndroidManifest.xml classes lib 2>/dev/null || true
           cd ..
           
           echo "Copying to output..."
-          cp aar_combined/libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc.aar
-          cp aar_combined/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
+          cp libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc.aar
+          
+          if [ -f "aar_combined/classes/libwebrtc.jar" ]; then
+            cp aar_combined/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
+          fi
           
           for arch in $ARCHS; do
             if [ -d "aar_combined/lib/$arch" ]; then
               cp -r aar_combined/lib/$arch/* $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
             fi
-            if [ -d "artifacts/libwebrtc-android-$arch.zip/extracted/lib" ]; then
-              cp artifacts/libwebrtc-android-$arch.zip/extracted/lib/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
+            # Also copy static lib
+            if [ -f "/tmp/android_extract/lib/libwebrtc.a" ]; then
+              cp /tmp/android_extract/lib/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
             fi
           done
           
           echo "Copying headers..."
-          unzip -q artifacts/libwebrtc-android-arm64-v8a.zip -d headers_tmp 2>/dev/null || true
-          cp -r headers_tmp/extracted/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
-          rm -rf headers_tmp
+          if [ -d "/tmp/android_extract/include" ]; then
+            cp -r /tmp/android_extract/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+          fi
+          
+          rm -rf /tmp/android_extract
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
@@ -1152,7 +1163,7 @@ jobs:
   release:
     name: Create Release
     needs: [check-version, fetch-webrtc, package-headers, build-ios, build-macos, build-linux, build-windows, combine-android]
-    if: needs.check-version.outputs.new_version != ''
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
