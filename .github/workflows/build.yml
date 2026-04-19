@@ -464,6 +464,8 @@ jobs:
           mkdir -p /tmp/webrtc_build
           for zip in artifacts/*.zip; do
             ARCH_NAME=$(basename "$zip" .zip | sed 's/libwebrtc-android-//')
+            # Extract just arch (arm64-v8a -> arm64-v8a, etc)
+            ARCH_NAME=$(echo "$ARCH_NAME" | sed 's/-[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*$//')
             echo "Extracting $zip to /tmp/webrtc_build/$ARCH_NAME..."
             rm -rf /tmp/webrtc_build/$ARCH_NAME
             mkdir -p /tmp/webrtc_build/$ARCH_NAME
@@ -524,8 +526,9 @@ jobs:
           
           ls -la $OUTPUT_DIR/
           
-          cd $OUTPUT_DIR
-          zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip aar jar lib include NOTICE VERSION
+          cd "$OUTPUT_DIR"
+          ZIP_PATH="${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip"
+          zip -r -0 "$ZIP_PATH" aar jar lib include NOTICE VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
