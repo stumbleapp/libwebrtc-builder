@@ -462,14 +462,19 @@ jobs:
           
           echo "Extracting each artifact to separate folder..."
           mkdir -p /tmp/webrtc_build
+          echo "Listing artifacts:"
+          ls -la artifacts/
           for zip in artifacts/*.zip; do
-            ARCH_NAME=$(basename "$zip" .zip | sed 's/libwebrtc-android-//')
-            # Extract just arch (arm64-v8a -> arm64-v8a, etc)
-            ARCH_NAME=$(echo "$ARCH_NAME" | sed 's/-[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*$//')
-            echo "Extracting $zip to /tmp/webrtc_build/$ARCH_NAME..."
+            echo "Processing zip: $zip"
+            ARCH_NAME=$(basename "$zip" .zip | sed 's/.*android-//' | sed 's/-[0-9.]*$//')
+            echo "Extracted arch name: $ARCH_NAME"
+            echo "Creating folder: /tmp/webrtc_build/$ARCH_NAME"
             rm -rf /tmp/webrtc_build/$ARCH_NAME
             mkdir -p /tmp/webrtc_build/$ARCH_NAME
-            unzip -q "$zip" -d /tmp/webrtc_build/$ARCH_NAME 2>/dev/null || true
+            echo "Extracting..."
+            unzip -q "$zip" -d /tmp/webrtc_build/$ARCH_NAME
+            echo "Result:"
+            ls -la /tmp/webrtc_build/$ARCH_NAME/
           done
           
           ls -la /tmp/webrtc_build/
@@ -1149,7 +1154,6 @@ jobs:
               New-Item -ItemType Directory -Force -Path $destDir | Out-Null
               Copy-Item -Path "$dir\*" -Destination $destDir -Recurse -ErrorAction SilentlyContinue
             }
-          }
           }
           
           "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
