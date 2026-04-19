@@ -446,14 +446,13 @@ jobs:
 
       - name: Combine artifacts
         run: |
-          echo "Getting version..."
-          cd artifacts
-          for f in *.zip; do
-            VERSION=$(unzip -p "$f" VERSION 2>/dev/null)
-            if [ -n "$VERSION" ]; then break; fi
-          done
-          cd ..
-          VERSION=${VERSION:-unknown}
+          echo "Getting version from filename..."
+          # Parse VERSION from first artifact filename: libwebrtc-android-arm64-v8a-{VERSION}.zip
+          FIRST_ZIP=$(ls artifacts/*.zip | head -1)
+          VERSION=$(basename "$FIRST_ZIP" .zip | sed 's/.*libwebrtc-android-//')
+          if [ -z "$VERSION" ] || echo "$VERSION" | grep -q "^libwebrtc"; then
+            VERSION="unknown"
+          fi
           echo "Combining Android artifacts for version $VERSION"
           
           OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
@@ -467,68 +466,68 @@ jobs:
             mkdir -p $OUTPUT_DIR/lib/$arch
           done
           
-          echo "Extracting AAR files..."
-          rm -rf /tmp/android_extracts
-          mkdir -p /tmp/android_extracts
-          for zip in artifacts/libwebrtc-android-*.zip; do
-            echo "Processing $zip"
-            unzip -q "$zip" -d /tmp/android_extracts 2>/dev/null || true
+          echo "Extracting each artifact to separate folder..."
+          for zip in artifacts/*.zip; do
+            ARCH_NAME=$(basename "$zip" .zip | sed 's/libwebrtc-android-//')
+            echo "Extracting $zip to /tmp/$ARCH_NAME..."
+            rm -rf /tmp/$ARCH_NAME
+            mkdir -p /tmp/$ARCH_NAME
+            unzip -q "$zip" -d /tmp/$ARCH_NAME 2>/dev/null || true
           done
           
-          ls -la /tmp/android_extracts/
+          ls -la /tmp/
           
-          echo "Creating combined AAR..."
-          mkdir -p aar_combined
-          cd aar_combined
-          
-          # Copy .so files per architecture
-          for arch in $ARCHS; do
-            if [ -d "/tmp/android_extracts/lib/$arch" ]; then
-              mkdir -p lib/$arch
-              cp -n /tmp/android_extracts/lib/$arch/*.so lib/$arch/ 2>/dev/null || true
+          echo "Copying files to output..."
+          for ARCH_NAME in arm64-v8a armeabi-v7a x86_64 x86; do
+            ARCH_DIR="/tmp/$ARCH_NAME"
+            if [ -d "$ARCH_DIR" ]; then
+              # Copy .so files
+              if [ -d "$ARCH_DIR/lib/$ARCH_NAME" ]; then
+                mkdir -p $OUTPUT_DIR/lib/$ARCH_NAME
+                cp -n $ARCH_DIR/lib/$ARCH_NAME/*.so $OUTPUT_DIR/lib/$ARCH_NAME/ 2>/dev/null || true
+              fi
+              
+              # Copy static lib
+              if [ -f "$ARCH_DIR/lib/libwebrtc.a" ]; then
+                mkdir -p $OUTPUT_DIR/lib/$ARCH_NAME
+                cp $ARCH_DIR/lib/libwebrtc.a $OUTPUT_DIR/lib/$ARCH_NAME/ 2>/dev/null || true
+              fi
+              
+              # Copy JAR
+              if [ -f "$ARCH_DIR/jar/libwebrtc.jar" ]; then
+                cp $ARCH_DIR/jar/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc-$ARCH_NAME.jar 2>/dev/null || true
+              fi
+              
+              # Copy AAR
+              if [ -f "$ARCH_DIR/aar/libwebrtc.aar" ]; then
+                cp $ARCH_DIR/aar/libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc-$ARCH_NAME.aar 2>/dev/null || true
+              fi
+              
+              # Copy headers (only once)
+              if [ -d "$ARCH_DIR/include" ] && [ ! -d "$OUTPUT_DIR/include/filled" ]; then
+                cp -r $ARCH_DIR/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+                mkdir -p $OUTPUT_DIR/include/filled
+              fi
             fi
           done
           
-          # Copy JAR
-          mkdir -p classes
-          if [ -f "/tmp/android_extracts/jar/libwebrtc.jar" ]; then
-            cp /tmp/android_extracts/jar/libwebrtc.jar classes/libwebrtc.jar 2>/dev/null || true
+          # Create a single jar for convenience
+          if [ -f "$OUTPUT_DIR/jar/libwebrtc-arm64-v8a.jar" ]; then
+            cp $OUTPUT_DIR/jar/libwebrtc-arm64-v8a.jar $OUTPUT_DIR/jar/libwebrtc.jar
           fi
           
-          # Copy AndroidManifest.xml from one of the extracted AARs
-          if [ -f "/tmp/android_extracts/aar/AndroidManifest.xml" ]; then
-            cp /tmp/android_extracts/aar/AndroidManifest.xml . 2>/dev/null || true
+          # Create a single aar for convenience  
+          if [ -f "$OUTPUT_DIR/aar/libwebrtc-arm64-v8a.aar" ]; then
+            cp $OUTPUT_DIR/aar/libwebrtc-arm64-v8a.aar $OUTPUT_DIR/aar/libwebrtc.aar
           fi
           
-          jar cfM ../libwebrtc.aar AndroidManifest.xml classes lib 2>/dev/null || true
-          cd ..
-          
-          echo "Copying to output..."
-          cp libwebrtc.aar $OUTPUT_DIR/aar/libwebrtc.aar
-          
-          if [ -f "aar_combined/classes/libwebrtc.jar" ]; then
-            cp aar_combined/classes/libwebrtc.jar $OUTPUT_DIR/jar/libwebrtc.jar
-          fi
-          
-          for arch in $ARCHS; do
-            if [ -d "aar_combined/lib/$arch" ]; then
-              cp -r aar_combined/lib/$arch/* $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
-            fi
-            # Also copy static lib (it's at lib/libwebrtc.a in each zip, but organized per-arch in output)
-            if [ -f "/tmp/android_extracts/lib/libwebrtc.a" ]; then
-              cp /tmp/android_extracts/lib/libwebrtc.a $OUTPUT_DIR/lib/$arch/ 2>/dev/null || true
-            fi
-          done
-          
-          echo "Copying headers..."
-          if [ -d "/tmp/android_extracts/include" ]; then
-            cp -r /tmp/android_extracts/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
-          fi
-          
-          rm -rf /tmp/android_extracts
+          # Clean up temp folders
+          rm -rf /tmp/arm64-v8a /tmp/armeabi-v7a /tmp/x86_64 /tmp/x86
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
+          
+          ls -la $OUTPUT_DIR/
           
           cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip aar jar lib include NOTICE VERSION
