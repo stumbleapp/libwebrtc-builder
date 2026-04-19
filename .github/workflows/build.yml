@@ -461,19 +461,20 @@ jobs:
           done
           
           echo "Extracting each artifact to separate folder..."
+          mkdir -p /tmp/webrtc_build
           for zip in artifacts/*.zip; do
             ARCH_NAME=$(basename "$zip" .zip | sed 's/libwebrtc-android-//')
-            echo "Extracting $zip to /tmp/$ARCH_NAME..."
-            rm -rf /tmp/$ARCH_NAME
-            mkdir -p /tmp/$ARCH_NAME
-            unzip -q "$zip" -d /tmp/$ARCH_NAME 2>/dev/null || true
+            echo "Extracting $zip to /tmp/webrtc_build/$ARCH_NAME..."
+            rm -rf /tmp/webrtc_build/$ARCH_NAME
+            mkdir -p /tmp/webrtc_build/$ARCH_NAME
+            unzip -q "$zip" -d /tmp/webrtc_build/$ARCH_NAME 2>/dev/null || true
           done
           
-          ls -la /tmp/
+          ls -la /tmp/webrtc_build/
           
           echo "Copying files to output..."
           for ARCH_NAME in arm64-v8a armeabi-v7a x86_64 x86; do
-            ARCH_DIR="/tmp/$ARCH_NAME"
+            ARCH_DIR="/tmp/webrtc_build/$ARCH_NAME"
             if [ -d "$ARCH_DIR" ]; then
               # Copy .so files
               if [ -d "$ARCH_DIR/lib/$ARCH_NAME" ]; then
@@ -515,8 +516,8 @@ jobs:
             cp $OUTPUT_DIR/aar/libwebrtc-arm64-v8a.aar $OUTPUT_DIR/aar/libwebrtc.aar
           fi
           
-          # Clean up temp folders
-          rm -rf /tmp/arm64-v8a /tmp/armeabi-v7a /tmp/x86_64 /tmp/x86
+          # Clean up temp folder
+          rm -rf /tmp/webrtc_build
           
           cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
           echo "$VERSION" > $OUTPUT_DIR/VERSION
