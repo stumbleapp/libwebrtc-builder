@@ -446,13 +446,7 @@ jobs:
 
       - name: Combine artifacts
         run: |
-          echo "Getting version from filename..."
-          # Parse VERSION from first artifact filename: libwebrtc-android-arm64-v8a-{VERSION}.zip
-          FIRST_ZIP=$(ls artifacts/*.zip | head -1)
-          VERSION=$(basename "$FIRST_ZIP" .zip | sed 's/.*libwebrtc-android-//')
-          if [ -z "$VERSION" ] || echo "$VERSION" | grep -q "^libwebrtc"; then
-            VERSION="unknown"
-          fi
+          VERSION="${{ needs.check-version.outputs.new_version }}"
           echo "Combining Android artifacts for version $VERSION"
           
           OUTPUT_DIR="${{ github.workspace }}/output-android-${VERSION}"
