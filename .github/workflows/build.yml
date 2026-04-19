@@ -809,7 +809,15 @@ jobs:
           
           cp -R out_macos_$ARCH/WebRTC.framework $OUTPUT_DIR/Frameworks/ || true
           cp -R out_macos_$ARCH/WebRTC.dSYM $OUTPUT_DIR/Frameworks/ || true
-          cp -R out_macos_$ARCH/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+          
+          # Copy headers from include and obj/gen
+          mkdir -p $OUTPUT_DIR/include
+          if [ -d "out_macos_$ARCH/include" ]; then
+            cp -R out_macos_$ARCH/include/* $OUTPUT_DIR/include/ 2>/dev/null || true
+          fi
+          if [ -d "out_macos_$ARCH/obj/gen" ]; then
+            find out_macos_$ARCH/obj/gen -name "*.h" -exec cp --parents -t $OUTPUT_DIR/include/ {} + 2>/dev/null || true
+          fi
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
