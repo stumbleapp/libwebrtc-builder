@@ -1117,7 +1117,7 @@ jobs:
           Write-Output "Building Windows $env:ARCH release..."
           gn gen "out/$env:OUT" --args-file=args.txt
           Write-Output "Running ninja..."
-          ninja -C "out/$env:OUT" -j16
+          ninja -C "out/$env:OUT" webrtc -j16
           if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
       - name: Create artifact
