@@ -1139,22 +1139,18 @@ jobs:
           Write-Output "Copying headers..."
           Set-Location "${{ github.workspace }}/webrtc-src/src"
           
-          $tempSrc = "$env:TEMP\webrtc-headers-$env:ARCH"
-          Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path $tempSrc -Force | Out-Null
+          # Copy main API headers
+          $includeDirs = @("api", "pc", "rtc_base", "rtc_tools", "system_wrappers", "modules", "media", "video", "audio", "call", "logging", "stats", "transport", "p2p", "sdk", "video_video_codec", "audio_codec", "voice_engine", "video_engine")
+          New-Item -ItemType Directory -Force -Path "$OUTPUT_DIR\include" | Out-Null
           
-          Get-ChildItem -Recurse -Include *.h,*.hpp,*.inc -File | Copy-Item -Destination $tempSrc -ErrorAction SilentlyContinue
-          
-          Get-ChildItem -Recurse -Directory | ForEach-Object {
-            $relPath = $_.FullName.Replace("${{ github.workspace }}/webrtc-src\src\", "")
-            if ($relPath -match "^(rtc_base|api|pc|system_wrappers|media|modules)") {
-              New-Item -ItemType Directory -Path "$tempSrc\$relPath" -Force -ErrorAction SilentlyContinue | Out-Null
-              Copy-Item "$($_.FullName)\*" -Destination "$tempSrc\$relPath\" -Recurse -ErrorAction SilentlyContinue
+          foreach ($dir in $includeDirs) {
+            if (Test-Path $dir) {
+              $destDir = "$OUTPUT_DIR\include\$dir"
+              New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+              Copy-Item -Path "$dir\*" -Destination $destDir -Recurse -ErrorAction SilentlyContinue
             }
           }
-          
-          Copy-Item -Recurse $tempSrc "$OUTPUT_DIR\include\" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force $tempSrc -ErrorAction SilentlyContinue
+          }
           
           "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
           Copy-Item "${{ github.workspace }}\LICENSE.md" "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
