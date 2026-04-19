@@ -923,7 +923,7 @@ jobs:
       - name: Install sysroots
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
-          python3 build/linux/sysroot_scripts/install-sysroot.py --all
+          python3 build/linux/sysroot_scripts/install-sysroot.py --arch=$CPU
 
       - name: Apply patches
         run: |
