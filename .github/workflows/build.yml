@@ -464,17 +464,18 @@ jobs:
           mkdir -p /tmp/webrtc_build
           echo "Listing artifacts:"
           ls -la artifacts/
-          for zip in artifacts/*.zip; do
-            echo "Processing zip: $zip"
-            ARCH_NAME=$(basename "$zip" .zip | sed 's/.*android-//' | sed 's/-[0-9.]*$//')
-            echo "Extracted arch name: $ARCH_NAME"
-            echo "Creating folder: /tmp/webrtc_build/$ARCH_NAME"
-            rm -rf /tmp/webrtc_build/$ARCH_NAME
-            mkdir -p /tmp/webrtc_build/$ARCH_NAME
-            echo "Extracting..."
-            unzip -q "$zip" -d /tmp/webrtc_build/$ARCH_NAME
-            echo "Result:"
-            ls -la /tmp/webrtc_build/$ARCH_NAME/
+          
+          # Handle both zip files and extracted directories
+          for item in artifacts/*; do
+            if [ -d "$item" ]; then
+              ARCH_NAME=$(basename "$item" | sed 's/.*android-//')
+              echo "Processing directory: $item -> $ARCH_NAME"
+              rm -rf /tmp/webrtc_build/$ARCH_NAME
+              mkdir -p /tmp/webrtc_build/$ARCH_NAME
+              cp -r "$item"/* /tmp/webrtc_build/$ARCH_NAME/
+              echo "Result:"
+              ls -la /tmp/webrtc_build/$ARCH_NAME/
+            fi
           done
           
           ls -la /tmp/webrtc_build/
@@ -1122,7 +1123,12 @@ jobs:
           Write-Output "Building Windows $env:ARCH release..."
           gn gen "out/$env:OUT" --args-file=args.txt
           Write-Output "Running ninja..."
-          ninja -C "out/$env:OUT" webrtc -j16
+          # Build essential SDK targets only for smaller output
+          ninja -C "out/$env:OUT" sdk:default_codec_factory_objc sdk:native_api pc:peer_connection api:peer_connection native_api -j16
+          if ($LASTEXITCODE -ne 0) { 
+            Write-Output "Primary targets failed, trying full webrtc..."
+            ninja -C "out/$env:OUT" webrtc -j16 
+          }
           if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
       - name: Create artifact
