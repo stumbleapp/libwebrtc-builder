@@ -168,6 +168,13 @@ jobs:
             exit 1
           fi
 
+      - name: Generate licenses
+        if: steps.cache-webrtc.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}/webrtc-src/src
+          echo "Generating LICENSE file..."
+          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc out out 2>/dev/null || echo "License generation may have failed, continuing..."
+
       - name: Remove .git directories
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
@@ -418,7 +425,7 @@ jobs:
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
           
-          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           cd $OUTPUT_DIR
@@ -531,14 +538,17 @@ jobs:
           # Clean up temp folder
           rm -rf /tmp/webrtc_build
           
-          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           ls -la $OUTPUT_DIR/
           
+          # Create the zip
+          mkdir -p "${{ github.workspace }}/webrtc-src/src"
+          ZIP_FILE="${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip"
+          echo "Creating zip: $ZIP_FILE"
           cd "$OUTPUT_DIR"
-          ZIP_PATH="${{ github.workspace }}/webrtc-src/src/libwebrtc-android-${VERSION}.zip"
-          zip -r -0 "$ZIP_PATH" aar jar lib include NOTICE VERSION
+          zip -r -0 "$ZIP_FILE" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
@@ -676,7 +686,7 @@ jobs:
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
-          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
           
           cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
@@ -831,7 +841,7 @@ jobs:
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
-          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
           
           cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
@@ -995,7 +1005,7 @@ jobs:
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
           
-          cp ${{ github.workspace }}/LICENSE.md $OUTPUT_DIR/NOTICE 2>/dev/null || true
+          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
             
           cd $OUTPUT_DIR
@@ -1127,12 +1137,7 @@ jobs:
           Write-Output "Building Windows $env:ARCH release..."
           gn gen "out/$env:OUT" --args-file=args.txt
           Write-Output "Running ninja..."
-          # Try building just the core SDK library - much smaller than full webrtc target
-          ninja -C "out/$env:OUT" sdk:libwebrtc sdk:native_api -j16 2>$null
-          if ($LASTEXITCODE -ne 0) { 
-            Write-Output "SDK targets not found, trying alternative targets..."
-            ninja -C "out/$env:OUT" webrtc -j16 
-          }
+          ninja -C "out/$env:OUT" webrtc -j16
           if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
       - name: Create artifact
@@ -1147,16 +1152,12 @@ jobs:
           
           $releaseDir = "out/$env:OUT"
           
-          # Find the generated .lib file
-          $LIB_FILE = Get-ChildItem -Path "$releaseDir" -Recurse -Filter "*.lib" | Select-Object -First 1
-          if ($LIB_FILE) {
-            Write-Output "Found library: $($LIB_FILE.FullName)"
-            Copy-Item $LIB_FILE.FullName "$OUTPUT_DIR\release\webrtc.lib"
+          # Copy the webrtc.lib file directly from obj directory
+          if (Test-Path "$releaseDir/obj/webrtc.lib") {
+            Write-Output "Copying webrtc.lib..."
+            Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
           } else {
-            Write-Output "No .lib file found, trying webrtc.lib..."
-            if (Test-Path "$releaseDir/obj/webrtc.lib") {
-              Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
-            }
+            Write-Output "Warning: webrtc.lib not found in obj directory"
           }
           
           Write-Output "Copying headers..."
@@ -1175,7 +1176,7 @@ jobs:
           }
           
           "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
-          Copy-Item "${{ github.workspace }}\LICENSE.md" "$OUTPUT_DIR\NOTICE" -ErrorAction SilentlyContinue
+          Copy-Item "${{ github.workspace }}\LICENSE" "$OUTPUT_DIR\NOTICE"
           
           Set-Location "$OUTPUT_DIR"
           Get-ChildItem -ErrorAction SilentlyContinue
