@@ -168,13 +168,6 @@ jobs:
             exit 1
           fi
 
-      - name: Generate licenses
-        if: steps.cache-webrtc.outputs.cache-hit != 'true'
-        run: |
-          cd ${{ github.workspace }}/webrtc-src/src
-          echo "Generating LICENSE file..."
-          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc out out 2>/dev/null || echo "License generation may have failed, continuing..."
-
       - name: Remove .git directories
         if: steps.cache-webrtc.outputs.cache-hit != 'true'
         run: |
@@ -396,6 +389,9 @@ jobs:
           rm -f sdk/android/libjingle_peerconnection_so/jni_onload.o 2>/dev/null || true
           ${{ github.workspace }}/webrtc-src/src/third_party/llvm-build/Release+Asserts/bin/llvm-ar -rc ../libwebrtc.a `find . -name '*.o'` 2>/dev/null || true
 
+          echo "Generating LICENSE file..."
+          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc out/static/$ARCH out/static/$ARCH 2>/dev/null || true
+
       - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
@@ -425,10 +421,9 @@ jobs:
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
           
-          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
+          cp out/static/$ARCH/LICENSE.md $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
-          
-          cd $OUTPUT_DIR
+
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-$ARCH-${VERSION}.zip aar jar lib include NOTICE VERSION
 
       - name: Upload artifact
@@ -538,7 +533,13 @@ jobs:
           # Clean up temp folder
           rm -rf /tmp/webrtc_build
           
-          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
+          # Find LICENSE from any extracted arch folder
+          for arch_dir in /tmp/webrtc_build/*/; do
+            if [ -f "$arch_dir/NOTICE" ]; then
+              cp "$arch_dir/NOTICE" $OUTPUT_DIR/NOTICE
+              break
+            fi
+          done
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           
           ls -la $OUTPUT_DIR/
@@ -669,6 +670,9 @@ jobs:
           echo "Cleaning DerivedData to save space..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
+          echo "Generating LICENSE file..."
+          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc tools_webrtc/ios/out_ios tools_webrtc/ios/out_ios 2>/dev/null || true
+
       - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
@@ -685,10 +689,8 @@ jobs:
           cd ${{ github.workspace }}/webrtc-src/src
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
-          
-          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
-          
-          cd $OUTPUT_DIR
+          cp tools_webrtc/ios/out_ios/LICENSE.md $OUTPUT_DIR/NOTICE
+
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
 
       - name: Upload artifact
@@ -817,6 +819,9 @@ jobs:
           echo "Cleaning DerivedData to save space..."
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
+          echo "Generating LICENSE file..."
+          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc out_macos_$ARCH out_macos_$ARCH 2>/dev/null || true
+
       - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
@@ -840,10 +845,8 @@ jobs:
           fi
           
           echo "$VERSION" > $OUTPUT_DIR/VERSION
-          
-          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
-          
-          cd $OUTPUT_DIR
+          cp out_macos_$ARCH/LICENSE.md $OUTPUT_DIR/NOTICE
+
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
 
       - name: Upload artifact
@@ -980,6 +983,9 @@ jobs:
           gn gen out/$ARCH --args="target_os=\"linux\" target_cpu=\"$CPU\" is_debug=false rtc_build_examples=false rtc_build_tools=false rtc_include_tests=false use_rtti=true is_component_build=false" --quiet
           ninja -C out/$ARCH -j16 webrtc
 
+          echo "Generating LICENSE file..."
+          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc out/$ARCH out/$ARCH 2>/dev/null || true
+
       - name: Create artifact
         run: |
           cd ${{ github.workspace }}/webrtc-src/src
@@ -1005,10 +1011,9 @@ jobs:
             . $OUTPUT_DIR/include/ 2>/dev/null || true
           rm -rf $OUTPUT_DIR/include/rtc_tools 2>/dev/null || true
           
-          cp ${{ github.workspace }}/LICENSE $OUTPUT_DIR/NOTICE
+          cp out/$ARCH/LICENSE.md $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
-            
-          cd $OUTPUT_DIR
+
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
 
       - name: Upload artifact
@@ -1140,6 +1145,9 @@ jobs:
           ninja -C "out/$env:OUT" webrtc -j16
           if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
+          Write-Output "Generating LICENSE file..."
+          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc "out/$env:OUT" "out/$env:OUT" 2>$null
+
       - name: Create artifact
         run: |
           Set-Location "${{ github.workspace }}/webrtc-src/src"
@@ -1176,7 +1184,7 @@ jobs:
           }
           
           "$VERSION" | Out-File -FilePath "$OUTPUT_DIR\VERSION" -Encoding ASCII
-          Copy-Item "${{ github.workspace }}\LICENSE" "$OUTPUT_DIR\NOTICE"
+          Copy-Item "$releaseDir/LICENSE.md" "$OUTPUT_DIR\NOTICE"
           
           Set-Location "$OUTPUT_DIR"
           Get-ChildItem -ErrorAction SilentlyContinue
@@ -1185,7 +1193,6 @@ jobs:
           } else {
             Compress-Archive -Path * -DestinationPath "${{ github.workspace }}\webrtc-src\src\libwebrtc-win-$env:ARCH-$VERSION.zip" -CompressionLevel NoCompression -Force
           }
-          Set-Location "${{ github.workspace }}/webrtc-src/src"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
