@@ -460,21 +460,25 @@ jobs:
             mkdir -p $OUTPUT_DIR/lib/$arch
           done
           
-          echo "Extracting each artifact to separate folder..."
+          echo "Extracting each artifact..."
           mkdir -p /tmp/webrtc_build
           echo "Listing artifacts:"
           ls -la artifacts/
           
-          # Handle both zip files and extracted directories
+          # Handle artifact directories containing zip files
           for item in artifacts/*; do
             if [ -d "$item" ]; then
-              ARCH_NAME=$(basename "$item" | sed 's/.*android-//')
-              echo "Processing directory: $item -> $ARCH_NAME"
-              rm -rf /tmp/webrtc_build/$ARCH_NAME
-              mkdir -p /tmp/webrtc_build/$ARCH_NAME
-              cp -r "$item"/* /tmp/webrtc_build/$ARCH_NAME/
-              echo "Result:"
-              ls -la /tmp/webrtc_build/$ARCH_NAME/
+              # Get the zip file inside the directory
+              ZIP_FILE=$(ls "$item"/*.zip 2>/dev/null | head -1)
+              if [ -n "$ZIP_FILE" ]; then
+                ARCH_NAME=$(basename "$item" | sed 's/.*android-//')
+                echo "Extracting $ZIP_FILE to /tmp/webrtc_build/$ARCH_NAME..."
+                rm -rf /tmp/webrtc_build/$ARCH_NAME
+                mkdir -p /tmp/webrtc_build/$ARCH_NAME
+                unzip -q "$ZIP_FILE" -d /tmp/webrtc_build/$ARCH_NAME
+                echo "Result:"
+                ls -la /tmp/webrtc_build/$ARCH_NAME/
+              fi
             fi
           done
           
@@ -1123,10 +1127,10 @@ jobs:
           Write-Output "Building Windows $env:ARCH release..."
           gn gen "out/$env:OUT" --args-file=args.txt
           Write-Output "Running ninja..."
-          # Build essential SDK targets only for smaller output
-          ninja -C "out/$env:OUT" sdk:default_codec_factory_objc sdk:native_api pc:peer_connection api:peer_connection native_api -j16
+          # Try building just the core SDK library - much smaller than full webrtc target
+          ninja -C "out/$env:OUT" sdk:libwebrtc sdk:native_api -j16 2>$null
           if ($LASTEXITCODE -ne 0) { 
-            Write-Output "Primary targets failed, trying full webrtc..."
+            Write-Output "SDK targets not found, trying alternative targets..."
             ninja -C "out/$env:OUT" webrtc -j16 
           }
           if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
@@ -1143,8 +1147,16 @@ jobs:
           
           $releaseDir = "out/$env:OUT"
           
-          if (Test-Path "$releaseDir/obj/webrtc.lib") {
-            Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
+          # Find the generated .lib file
+          $LIB_FILE = Get-ChildItem -Path "$releaseDir" -Recurse -Filter "*.lib" | Select-Object -First 1
+          if ($LIB_FILE) {
+            Write-Output "Found library: $($LIB_FILE.FullName)"
+            Copy-Item $LIB_FILE.FullName "$OUTPUT_DIR\release\webrtc.lib"
+          } else {
+            Write-Output "No .lib file found, trying webrtc.lib..."
+            if (Test-Path "$releaseDir/obj/webrtc.lib") {
+              Copy-Item "$releaseDir/obj/webrtc.lib" "$OUTPUT_DIR\release\webrtc.lib"
+            }
           }
           
           Write-Output "Copying headers..."
