@@ -424,6 +424,7 @@ jobs:
           cp out/static/$ARCH/LICENSE.md $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
 
+          cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-android-$ARCH-${VERSION}.zip aar jar lib include NOTICE VERSION
 
       - name: Upload artifact
@@ -691,6 +692,7 @@ jobs:
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           cp tools_webrtc/ios/out_ios/LICENSE.md $OUTPUT_DIR/NOTICE
 
+          cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-ios-${VERSION}.zip WebRTC.xcframework NOTICE VERSION
 
       - name: Upload artifact
@@ -820,7 +822,8 @@ jobs:
           rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
           echo "Generating LICENSE file..."
-          vpython3 tools_webrtc/libs/generate_licenses.py --target :webrtc out_macos_$ARCH out_macos_$ARCH 2>/dev/null || true
+          vpython3 tools_webrtc/libs/generate_licenses.py --verbose --target :webrtc out_macos_$ARCH out_macos_$ARCH 2>&1 || true
+          ls out_macos_$ARCH/LICENSE.md 2>&1 || true
 
       - name: Create artifact
         run: |
@@ -847,6 +850,7 @@ jobs:
           echo "$VERSION" > $OUTPUT_DIR/VERSION
           cp out_macos_$ARCH/LICENSE.md $OUTPUT_DIR/NOTICE
 
+          cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-macos-$ARCH-${VERSION}.zip lib Frameworks include NOTICE VERSION
 
       - name: Upload artifact
@@ -1014,6 +1018,7 @@ jobs:
           cp out/$ARCH/LICENSE.md $OUTPUT_DIR/NOTICE
           echo "$VERSION" > $OUTPUT_DIR/VERSION
 
+          cd $OUTPUT_DIR
           zip -r -0 ${{ github.workspace }}/webrtc-src/src/libwebrtc-linux-$ARCH-${VERSION}.zip lib include NOTICE VERSION
 
       - name: Upload artifact
